@@ -1,0 +1,43 @@
+ابدئي من هنا
+=============
+
+1) ثبتي Python من python.org إذا لم يكن مثبتاً.
+2) افتحي مجلد pokemon_skin_quiz في Visual Studio Code.
+3) من قائمة Terminal اختاري New Terminal.
+4) اكتبي الأوامر التالية واحداً بعد الآخر:
+
+python -m venv .venv
+
+على Windows Command Prompt:
+.venv\Scripts\activate.bat
+
+على Windows PowerShell:
+.venv\Scripts\Activate.ps1
+
+على macOS أو Linux:
+source .venv/bin/activate
+
+ثم:
+python -m pip install -r requirements.txt
+python -m uvicorn app:app --reload
+
+5) افتحي هذا العنوان في المتصفح:
+http://127.0.0.1:8000
+
+إضافة أسئلة جديدة
+=================
+عدلي ملف questions.csv فقط.
+لا تمسحي السطر الأول الذي يحتوي أسماء الأعمدة.
+ضعي كل سؤال جديد في سطر جديد.
+اجعلي id رقماً مختلفاً لكل سؤال.
+correct_option يجب أن تكون A أو B أو C أو D.
+
+ترتيب المجلدات
+==============
+pokemon_skin_quiz/
+  app.py
+  questions.csv
+  requirements.txt
+  START_HERE_AR.txt
+  templates/
+    index.html

@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ page_title }}</title>
+    <style>
+        :root {
+            --ink: #172033;
+            --panel: rgba(255, 255, 255, 0.94);
+            --accent: #ffcb05;
+            --accent-dark: #3157a4;
+            --success: #1f9d55;
+            --danger: #d64545;
+            --muted: #667085;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            color: var(--ink);
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+                         "Segoe UI", sans-serif;
+            background:
+                radial-gradient(circle at 15% 15%, rgba(255, 255, 255, 0.45), transparent 22%),
+                linear-gradient(135deg, #74c0fc 0%, #5c7cfa 48%, #7048e8 100%);
+            display: grid;
+            place-items: center;
+            padding: 24px;
+        }
+
+        .game-shell {
+            width: min(920px, 100%);
+            background: var(--panel);
+            border: 4px solid rgba(23, 32, 51, 0.85);
+            border-radius: 28px;
+            box-shadow: 0 24px 60px rgba(14, 25, 54, 0.35);
+            overflow: hidden;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            padding: 18px 24px;
+            background: var(--ink);
+            color: white;
+        }
+
+        .topbar h1 {
+            margin: 0;
+            font-size: clamp(1.15rem, 3vw, 1.65rem);
+        }
+
+        .score-badge {
+            white-space: nowrap;
+            padding: 8px 14px;
+            border-radius: 999px;
+            background: var(--accent);
+            color: var(--ink);
+            font-weight: 900;
+        }
+
+        .progress-track {
+            height: 9px;
+            background: #d9e2f0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            width: {{ progress | default(0) }}%;
+            background: linear-gradient(90deg, #ffcb05, #ff922b);
+            transition: width 350ms ease;
+        }
+
+        .battlefield {
+            position: relative;
+            min-height: 230px;
+            padding: 24px;
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: end;
+            gap: 18px;
+            background:
+                linear-gradient(to bottom, rgba(255,255,255,0.15) 0 55%, rgba(72, 187, 120, 0.24) 55% 100%),
+                linear-gradient(180deg, #b8e7ff, #e8f8ff);
+            border-bottom: 2px solid #cad5e3;
+        }
+
+        .fighter { text-align: center; }
+
+        .creature {
+            display: grid;
+            place-items: center;
+            width: 112px;
+            height: 112px;
+            margin: 8px auto;
+            border-radius: 50%;
+            font-size: 4rem;
+            background: white;
+            border: 5px solid var(--ink);
+            box-shadow: 0 12px 0 rgba(23, 32, 51, 0.12);
+        }
+
+        .player .creature { background: #fff3bf; }
+        .enemy .creature { background: #ffd8d8; }
+
+        .result-correct .player .creature {
+            animation: attack 700ms ease-in-out 1;
+        }
+
+        .result-correct .enemy .creature {
+            animation: hit 700ms ease-in-out 1;
+        }
+
+        .result-wrong .player .creature {
+            animation: miss 500ms ease-in-out 1;
+        }
+
+        @keyframes attack {
+            0% { transform: translateX(0) rotate(0); }
+            45% { transform: translateX(72px) rotate(8deg) scale(1.08); }
+            100% { transform: translateX(0) rotate(0); }
+        }
+
+        @keyframes hit {
+            0%, 100% { transform: translateX(0); filter: none; }
+            45% { transform: translateX(24px) rotate(10deg); filter: brightness(1.5); }
+        }
+
+        @keyframes miss {
+            0%, 100% { transform: translateX(0); }
+            35% { transform: translateX(18px); }
+            65% { transform: translateX(-18px); }
+        }
+
+        .versus {
+            align-self: center;
+            font-weight: 1000;
+            font-size: 1.25rem;
+            color: var(--accent-dark);
+        }
+
+        .fighter-name { margin: 0; font-weight: 900; }
+
+        .health-bar {
+            width: min(220px, 100%);
+            height: 13px;
+            margin: 8px auto 0;
+            background: #d8dee9;
+            border: 2px solid var(--ink);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .health-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #40c057, #94d82d);
+            transition: width 500ms ease;
+        }
+
+        .content { padding: clamp(22px, 5vw, 38px); }
+
+        .question-meta {
+            margin: 0 0 8px;
+            color: var(--accent-dark);
+            font-weight: 850;
+            letter-spacing: 0.02em;
+        }
+
+        h2 {
+            margin: 0 0 22px;
+            font-size: clamp(1.4rem, 4vw, 2rem);
+            line-height: 1.25;
+        }
+
+        .answers {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .answer input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .answer label {
+            min-height: 72px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            border: 3px solid #ccd5e0;
+            border-radius: 16px;
+            background: white;
+            cursor: pointer;
+            font-weight: 750;
+            transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+        }
+
+        .answer label:hover {
+            transform: translateY(-2px);
+            border-color: var(--accent-dark);
+            box-shadow: 0 8px 18px rgba(49, 87, 164, 0.14);
+        }
+
+        .answer input:focus-visible + label {
+            outline: 4px solid rgba(49, 87, 164, 0.26);
+            outline-offset: 2px;
+        }
+
+        .answer input:checked + label {
+            border-color: var(--accent-dark);
+            background: #eef3ff;
+            box-shadow: inset 0 0 0 2px var(--accent-dark);
+        }
+
+        .letter {
+            flex: 0 0 38px;
+            height: 38px;
+            display: grid;
+            place-items: center;
+            border-radius: 50%;
+            background: var(--ink);
+            color: white;
+            font-weight: 950;
+        }
+
+        .button-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 22px;
+        }
+
+        button {
+            appearance: none;
+            border: 0;
+            border-radius: 14px;
+            padding: 13px 20px;
+            font: inherit;
+            font-weight: 900;
+            cursor: pointer;
+            transition: transform 120ms ease, filter 120ms ease;
+        }
+
+        button:hover { transform: translateY(-1px); filter: brightness(1.03); }
+        button:active { transform: translateY(1px); }
+
+        .primary {
+            background: var(--accent);
+            color: var(--ink);
+            border: 3px solid var(--ink);
+            box-shadow: 0 5px 0 var(--ink);
+        }
+
+        .secondary {
+            background: #e9edf3;
+            color: var(--ink);
+            border: 2px solid #b9c2cf;
+        }
+
+        .result-box {
+            border-radius: 18px;
+            padding: 20px;
+            border: 3px solid;
+        }
+
+        .result-box.correct {
+            background: #e9fbef;
+            border-color: var(--success);
+        }
+
+        .result-box.wrong {
+            background: #fff0f0;
+            border-color: var(--danger);
+        }
+
+        .result-box h2 { margin-bottom: 8px; }
+        .result-box p { margin: 6px 0; line-height: 1.55; }
+
+        .complete {
+            text-align: center;
+            padding: 10px 0;
+        }
+
+        .trophy { font-size: 5rem; margin-bottom: 8px; }
+
+        .error-panel {
+            margin: 28px;
+            padding: 24px;
+            border: 3px solid var(--danger);
+            border-radius: 18px;
+            background: #fff5f5;
+        }
+
+        .hint {
+            color: var(--muted);
+            font-size: 0.93rem;
+        }
+
+        @media (max-width: 650px) {
+            body { padding: 10px; }
+            .game-shell { border-radius: 19px; }
+            .topbar { padding: 14px 16px; }
+            .battlefield { min-height: 190px; padding: 18px 10px; gap: 8px; }
+            .creature { width: 82px; height: 82px; font-size: 3rem; border-width: 4px; }
+            .answers { grid-template-columns: 1fr; }
+            .versus { font-size: 0.95rem; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="game-shell {% if result and result.correct %}result-correct{% elif result %}result-wrong{% endif %}">
+        <header class="topbar">
+            <h1>⚡ Pokémon Skin Battle</h1>
+            {% if not csv_error %}
+                <div class="score-badge">Score: {{ score }} / {{ question_count }}</div>
+            {% endif %}
+        </header>
+
+        <div class="progress-track" aria-label="Quiz progress">
+            <div class="progress-fill"></div>
+        </div>
+
+        {% if csv_error %}
+            <section class="error-panel">
+                <h2>Question file error</h2>
+                <p>{{ csv_error }}</p>
+                <p class="hint">Fix <code>questions.csv</code>, then refresh this page.</p>
+            </section>
+        {% else %}
+            <section class="battlefield" aria-label="Pokémon battle scene">
+                <div class="fighter player">
+                    <p class="fighter-name">Your Pokémon</p>
+                    <div class="creature" aria-label="Your electric Pokémon">⚡🐾</div>
+                    <div class="health-bar" aria-label="Your Pokémon health">
+                        <div class="health-fill" style="width: 100%"></div>
+                    </div>
+                </div>
+
+                <div class="versus">VS</div>
+
+                <div class="fighter enemy">
+                    <p class="fighter-name">Quiz Rival</p>
+                    <div class="creature" aria-label="Quiz rival">👾</div>
+                    <div class="health-bar" aria-label="Rival health">
+                        <div class="health-fill" style="width: {{ enemy_health }}%"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="content">
+                {% if complete %}
+                    <div class="complete">
+                        <div class="trophy">🏆</div>
+                        <h2>Your Pokémon won the battle!</h2>
+                        <p>You answered all {{ question_count }} questions correctly.</p>
+                        <p><strong>Final score: {{ score }} / {{ question_count }}</strong></p>
+                        <form method="post" action="/">
+                            <input type="hidden" name="action" value="restart">
+                            <div class="button-row" style="justify-content: center">
+                                <button class="primary" type="submit">Play Again</button>
+                            </div>
+                        </form>
+                    </div>
+
+                {% elif result %}
+                    <div class="result-box {% if result.correct %}correct{% else %}wrong{% endif %}" role="status" aria-live="polite">
+                        <h2>{% if result.correct %}⚡{% else %}💨{% endif %} {{ result.title }}</h2>
+                        <p>{{ result.message }}</p>
+                        {% if result.correct and result.explanation %}
+                            <p><strong>Why:</strong> {{ result.explanation }}</p>
+                        {% endif %}
+                    </div>
+
+                    <form method="post" action="/">
+                        <input type="hidden" name="action" value="{% if result.correct %}next{% else %}retry{% endif %}">
+                        <div class="button-row">
+                            {% if result.correct %}
+                                <button class="primary" type="submit">
+                                    {% if question_number == question_count %}See Final Score{% else %}Next Battle{% endif %}
+                                </button>
+                            {% else %}
+                                <button class="primary" type="submit">Try Again</button>
+                            {% endif %}
+                        </div>
+                    </form>
+
+                {% else %}
+                    <p class="question-meta">Question {{ question_number }} of {{ question_count }}</p>
+                    <h2>{{ question.text }}</h2>
+
+                    <form method="post" action="/" id="answer-form">
+                        <input type="hidden" name="action" value="answer">
+                        <div class="answers">
+                            {% for letter, answer_text in question.options.items() %}
+                                <div class="answer">
+                                    <input
+                                        type="radio"
+                                        id="answer-{{ letter }}"
+                                        name="selected_answer"
+                                        value="{{ letter }}"
+                                        required
+                                    >
+                                    <label for="answer-{{ letter }}">
+                                        <span class="letter">{{ letter }}</span>
+                                        <span>{{ answer_text }}</span>
+                                    </label>
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="button-row">
+                            <button class="primary" type="submit">Launch Attack!</button>
+                        </div>
+                    </form>
+                {% endif %}
+
+                {% if not complete %}
+                    <form method="post" action="/">
+                        <input type="hidden" name="action" value="restart">
+                        <div class="button-row">
+                            <button class="secondary" type="submit">Restart Game</button>
+                        </div>
+                    </form>
+                {% endif %}
+            </section>
+        {% endif %}
+    </main>
+</body>
+</html>
