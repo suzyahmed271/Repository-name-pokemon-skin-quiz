@@ -1,4 +1,11 @@
-// Animal Cell Systems Lab model
+// Copyright 2015-2026, University of Colorado Boulder
+
+/**
+ * Model for the Animal Cell Systems Lab adapted classroom simulation.
+ *
+ * @author Suzan Ahmed Mustafa
+ */
+
 import BooleanProperty from '../../../../axon/js/BooleanProperty.js';
 import NumberProperty from '../../../../axon/js/NumberProperty.js';
 import Property from '../../../../axon/js/Property.js';
@@ -21,6 +28,10 @@ class AnimalCellModel {
     this.highEnergyDemandProperty = new BooleanProperty( false );
   }
 
+  /**
+   * Restore normal healthy-cell values.
+   * @public
+   */
   resetCell() {
     this.energyProperty.value = 82;
     this.proteinProperty.value = 82;
@@ -34,6 +45,11 @@ class AnimalCellModel {
     this.highEnergyDemandProperty.value = false;
   }
 
+  /**
+   * Run a cause-and-effect experiment.
+   * @param {string} experiment
+   * @public
+   */
   runExperiment( experiment ) {
     this.resetCell();
 
@@ -80,6 +96,10 @@ class AnimalCellModel {
     }
   }
 
+  /**
+   * Reset the entire simulation state.
+   * @public
+   */
   reset() {
     this.modeProperty.value = 'learn';
     this.selectedOrganelleProperty.value = 'nucleus';
