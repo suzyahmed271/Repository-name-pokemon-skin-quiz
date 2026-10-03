@@ -6,9 +6,9 @@
  * @author Suzan Ahmed Mustafa
  */
 
-import Property from '../../../../axon/js/Property.js';
-import Screen from '../../../../joist/js/Screen.js';
-import StringProperty from '../../../../axon/js/StringProperty.js';
+import Property from '../../../axon/js/Property.js';
+import Screen from '../../../joist/js/Screen.js';
+import StringProperty from '../../../axon/js/StringProperty.js';
 import AnimalCellModel from './AnimalCellModel.js';
 import AnimalCellScreenView from './AnimalCellScreenView.js';
 

@@ -6,9 +6,9 @@
  * @author Suzan Ahmed Mustafa
  */
 
-import BooleanProperty from '../../../../axon/js/BooleanProperty.js';
-import NumberProperty from '../../../../axon/js/NumberProperty.js';
-import Property from '../../../../axon/js/Property.js';
+import BooleanProperty from '../../../axon/js/BooleanProperty.js';
+import NumberProperty from '../../../axon/js/NumberProperty.js';
+import Property from '../../../axon/js/Property.js';
 
 class AnimalCellModel {
   constructor() {

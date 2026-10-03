@@ -6,17 +6,17 @@
  * @author Suzan Ahmed Mustafa
  */
 
-import ScreenView from '../../../../joist/js/ScreenView.js';
-import ResetAllButton from '../../../../scenery-phet/js/buttons/ResetAllButton.js';
-import PhetFont from '../../../../scenery-phet/js/PhetFont.js';
-import Circle from '../../../../scenery/js/nodes/Circle.js';
-import Node from '../../../../scenery/js/nodes/Node.js';
-import Rectangle from '../../../../scenery/js/nodes/Rectangle.js';
-import Text from '../../../../scenery/js/nodes/Text.js';
-import VBox from '../../../../scenery/js/layout/nodes/VBox.js';
-import HBox from '../../../../scenery/js/layout/nodes/HBox.js';
-import FireListener from '../../../../scenery/js/listeners/FireListener.js';
-import RectangularPushButton from '../../../../sun/js/buttons/RectangularPushButton.js';
+import ScreenView from '../../../joist/js/ScreenView.js';
+import ResetAllButton from '../../../scenery-phet/js/buttons/ResetAllButton.js';
+import PhetFont from '../../../scenery-phet/js/PhetFont.js';
+import Circle from '../../../scenery/js/nodes/Circle.js';
+import Node from '../../../scenery/js/nodes/Node.js';
+import Rectangle from '../../../scenery/js/nodes/Rectangle.js';
+import Text from '../../../scenery/js/nodes/Text.js';
+import VBox from '../../../scenery/js/layout/nodes/VBox.js';
+import HBox from '../../../scenery/js/layout/nodes/HBox.js';
+import FireListener from '../../../scenery/js/listeners/FireListener.js';
+import RectangularPushButton from '../../../sun/js/buttons/RectangularPushButton.js';
 
 const INFO = {
   membrane: {
