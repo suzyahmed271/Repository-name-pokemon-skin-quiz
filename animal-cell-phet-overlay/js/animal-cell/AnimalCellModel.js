@@ -10,24 +10,24 @@
 import NumberProperty from '../../../axon/js/NumberProperty.js';
 import Property from '../../../axon/js/Property.js';
 import Range from '../../../dot/js/Range.js';
-import { roundSymmetric } from '../../../dot/js/util/roundSymmetric.js';
 
-const clamp = value => Math.max( 0, Math.min( 100, roundSymmetric( value ) ) );
+const clamp = value => Math.max( 0, Math.min( 100, value ) );
 
 const VARIABLE_DEFINITIONS = [
-  { key: 'oxygen', label: 'Oxygen availability', group: 'environment', value: 80, output: 'ATP / energy', outputKey: 'atp', visible: 'Energy particles slow when oxygen is limited.' },
-  { key: 'glucose', label: 'Glucose availability', group: 'environment', value: 82, output: 'ATP / energy', outputKey: 'atp', visible: 'Energy supply changes as fuel availability changes.' },
+  { key: 'oxygen', label: 'Oxygen availability', group: 'environment', value: 100, output: 'ATP / energy', outputKey: 'atp', visible: 'Energy particles slow when oxygen is limited.' },
+  { key: 'glucose', label: 'Glucose availability', group: 'environment', value: 100, output: 'ATP / energy', outputKey: 'atp', visible: 'Energy supply changes as fuel availability changes.' },
   { key: 'water', label: 'Outside water level', group: 'environment', value: 50, output: 'Relative cell volume', outputKey: 'volume', visible: 'The cell boundary gently expands or contracts.' },
   { key: 'temperature', label: 'Temperature condition', group: 'environment', value: 50, output: 'Cell performance', outputKey: 'health', visible: 'Very low or high conditions reduce process performance.' },
   { key: 'ph', label: 'pH condition', group: 'conditions', value: 50, output: 'Cell health', outputKey: 'health', visible: 'Conditions far from the preferred range add stress.' },
-  { key: 'toxins', label: 'Toxin exposure', group: 'conditions', value: 8, output: 'Cell health / stress', outputKey: 'health', visible: 'Stress marks appear as exposure increases.' },
-  { key: 'proteinDemand', label: 'Protein demand', group: 'conditions', value: 45, output: 'Protein output / backlog', outputKey: 'protein', visible: 'High demand increases the work shown at ribosomes and ER.' },
-  { key: 'permeability', label: 'Membrane permeability', group: 'conditions', value: 35, output: 'Transport / balance', outputKey: 'balance', visible: 'More open transport changes water and material movement.' },
-  { key: 'mitochondria', label: 'Mitochondria function', group: 'organelles', value: 90, output: 'ATP / energy', outputKey: 'atp', visible: 'Mitochondria activity and ATP supply respond.' },
-  { key: 'ribosomes', label: 'Ribosome function', group: 'organelles', value: 90, output: 'Protein production', outputKey: 'protein', visible: 'Protein particles become less frequent as function falls.' },
-  { key: 'golgi', label: 'Golgi function', group: 'organelles', value: 90, output: 'Packaging / export', outputKey: 'export', visible: 'Materials build up before export when packaging slows.' },
-  { key: 'lysosomes', label: 'Lysosome function', group: 'organelles', value: 90, output: 'Waste buildup', outputKey: 'waste', visible: 'Waste particles accumulate as recycling slows.' },
-  { key: 'nucleusSignal', label: 'Nucleus signaling', group: 'organelles', value: 90, output: 'Coordination / protein', outputKey: 'protein', visible: 'Instruction-dependent work is reduced.' }
+  { key: 'toxins', label: 'Toxin exposure', group: 'conditions', value: 0, output: 'Cell health / stress', outputKey: 'health', visible: 'Stress marks appear as exposure increases.' },
+  { key: 'proteinDemand', label: 'Protein demand', group: 'conditions', value: 55, output: 'Protein output / backlog', outputKey: 'protein', visible: 'High demand increases the work shown at ribosomes and ER.' },
+  { key: 'permeability', label: 'Membrane permeability', group: 'conditions', value: 42, output: 'Transport / balance', outputKey: 'balance', visible: 'More open transport changes water and material movement.' },
+  { key: 'mitochondria', label: 'Mitochondria function', group: 'organelles', value: 100, output: 'ATP / energy', outputKey: 'atp', visible: 'Mitochondria activity and ATP supply respond.' },
+  { key: 'ribosomes', label: 'Ribosome function', group: 'organelles', value: 100, output: 'Protein production', outputKey: 'protein', visible: 'Protein particles become less frequent as function falls.' },
+  { key: 'roughER', label: 'Rough ER function', group: 'organelles', value: 100, output: 'Protein processing', outputKey: 'protein', visible: 'Protein processing and routing respond.' },
+  { key: 'golgi', label: 'Golgi function', group: 'organelles', value: 100, output: 'Packaging / export', outputKey: 'export', visible: 'Materials build up before export when packaging slows.' },
+  { key: 'lysosomes', label: 'Lysosome function', group: 'organelles', value: 100, output: 'Waste buildup', outputKey: 'waste', visible: 'Waste particles accumulate as recycling slows.' },
+  { key: 'nucleusSignal', label: 'Nucleus signaling', group: 'organelles', value: 100, output: 'Coordination / protein', outputKey: 'protein', visible: 'Instruction-dependent work is reduced.' }
 ];
 
 const SCENARIOS = [
@@ -91,9 +91,26 @@ class AnimalCellModel {
     this.transportProperty = new NumberProperty( 0 );
     this.stressProperty = new NumberProperty( 0 );
     this.flowPhaseProperty = new NumberProperty( 0 );
+    this.golgiBacklogProperty = new NumberProperty( 0 );
+    this.historyProperty = new Property( [] );
+    this.historyTime = 0;
+    this.historyInterval = 0.5;
+    this.historyElapsed = 0;
+    this.selectedTrialsProperty = new Property( [] );
 
-    Object.values( this.variables ).forEach( property => property.link( () => this.updateOutputs() ) );
     this.updateOutputs();
+    this.atpProperty.value = this.targets.atp;
+    this.proteinProperty.value = this.targets.protein;
+    this.wasteProperty.value = this.targets.waste;
+    this.volumeProperty.value = this.targets.volume;
+    this.balanceProperty.value = this.targets.balance;
+    this.healthProperty.value = this.targets.health;
+    this.exportProperty.value = this.targets.export;
+    this.transportProperty.value = this.targets.transport;
+    this.stressProperty.value = this.targets.stress;
+    this.golgiBacklogProperty.value = this.targets.golgiBacklog;
+    Object.values( this.variables ).forEach( property => property.link( () => this.updateOutputs() ) );
+    this.recordHistorySample();
   }
 
   /** @public */
@@ -250,6 +267,8 @@ class AnimalCellModel {
       result: after[ dependentVariable ],
       oxygen: this.variables.oxygen.value,
       atp: after.atp,
+      protein: after.protein,
+      waste: after.waste,
       cellHealth: after.health,
       observation: this.observationChoiceProperty.value,
       claim: this.cerClaimProperty.value,
@@ -337,33 +356,62 @@ class AnimalCellModel {
     const v = key => this.variables[ key ].value;
     const temperatureFit = Math.max( 0.25, 1 - Math.abs( v( 'temperature' ) - 50 ) / 75 );
     const phFit = Math.max( 0.2, 1 - Math.abs( v( 'ph' ) - 50 ) / 65 );
-    const toxinFit = 1 - v( 'toxins' ) * 0.006;
-    const atp = clamp( ( v( 'oxygen' ) * 0.42 + v( 'glucose' ) * 0.28 + v( 'mitochondria' ) * 0.30 ) * temperatureFit * toxinFit );
-    const proteinCapacity = Math.min( v( 'nucleusSignal' ), v( 'ribosomes' ), 0.78 * v( 'mitochondria' ) + 22 );
-    const protein = clamp( proteinCapacity * ( 0.45 + ( v( 'proteinDemand' ) / 180 ) ) * phFit * toxinFit );
-    const exported = clamp( Math.min( protein * 0.9 + 10, v( 'golgi' ), v( 'mitochondria' ) + 20 ) );
-    const waste = clamp( 12 + v( 'toxins' ) * 0.28 + ( 100 - v( 'lysosomes' ) ) * 0.68 + v( 'proteinDemand' ) * 0.12 );
+    const membraneFunction = 100 - Math.abs( v( 'permeability' ) - 42 ) * 1.35;
     const volume = clamp( 75 + ( v( 'water' ) - 50 ) * v( 'permeability' ) * 0.018 );
-    const transport = clamp( 100 - Math.abs( v( 'permeability' ) - 38 ) * 0.72 - Math.abs( v( 'water' ) - 50 ) * v( 'permeability' ) * 0.009 );
-    const balance = clamp( 100 - Math.abs( volume - 75 ) * 0.75 - Math.abs( v( 'permeability' ) - 38 ) * 0.32 );
-    const stress = clamp( v( 'toxins' ) * 0.55 + Math.abs( v( 'temperature' ) - 50 ) * 0.36 + Math.abs( v( 'ph' ) - 50 ) * 0.46 + Math.max( 0, volume - 90 ) * 0.8 );
-    const health = clamp( atp * 0.23 + protein * 0.17 + ( 100 - waste ) * 0.18 + balance * 0.24 + ( 100 - stress ) * 0.18 );
-
-    this.atpProperty.value = atp;
-    this.proteinProperty.value = protein;
-    this.exportProperty.value = exported;
-    this.wasteProperty.value = waste;
-    this.volumeProperty.value = volume;
-    this.transportProperty.value = transport;
-    this.balanceProperty.value = balance;
-    this.stressProperty.value = stress;
-    this.healthProperty.value = health;
+    const transport = clamp( membraneFunction - Math.abs( v( 'water' ) - 50 ) * v( 'permeability' ) * 0.009 );
+    const balance = clamp( 100 - Math.abs( volume - 75 ) * 0.75 - Math.abs( v( 'permeability' ) - 42 ) * 0.9 );
+    const targets = {
+      atp: clamp( ( v( 'oxygen' ) * 0.36 + v( 'glucose' ) * 0.28 + v( 'mitochondria' ) * 0.36 ) * temperatureFit * ( 1 - v( 'toxins' ) * 0.004 ) ),
+      volume: volume,
+      transport: transport,
+      balance: balance
+    };
+    targets.protein = clamp( Math.min( v( 'nucleusSignal' ), v( 'ribosomes' ), v( 'roughER' ) ) * ( 0.42 + targets.atp * 0.0058 ) * phFit * ( 0.55 + v( 'proteinDemand' ) / 125 ) );
+    targets.golgiBacklog = clamp( ( targets.protein * 0.78 + v( 'proteinDemand' ) * 0.22 ) * ( 1 - v( 'golgi' ) / 100 ) );
+    targets.export = clamp( Math.min( targets.protein - targets.golgiBacklog * 0.55, v( 'golgi' ), transport, targets.atp + 10 ) );
+    const baselineWaste = 10 + v( 'toxins' ) * 0.32 + ( 100 - v( 'lysosomes' ) ) * 0.72;
+    targets.stress = clamp( ( 100 - targets.atp ) * 0.28 + baselineWaste * 0.30 + Math.abs( v( 'temperature' ) - 50 ) * 0.40 + Math.abs( v( 'ph' ) - 50 ) * 0.52 + ( 100 - balance ) * 0.32 + Math.abs( volume - 75 ) * 0.25 );
+    targets.waste = clamp( baselineWaste + targets.stress * 0.18 );
+    targets.health = clamp( targets.atp * 0.27 + targets.protein * 0.12 + ( 100 - targets.waste ) * 0.20 + balance * 0.24 + ( 100 - targets.stress ) * 0.17 );
+    this.targets = targets;
   }
 
   /** Advance the visual transport particles. @public */
   step( dt ) {
-    const activityFactor = 0.035 + this.atpProperty.value / 500;
+    this.updateOutputs();
+    const approach = ( current, target, seconds ) => current + ( target - current ) * Math.min( 1, dt / seconds );
+    this.atpProperty.value = approach( this.atpProperty.value, this.targets.atp, 2.4 );
+    this.volumeProperty.value = approach( this.volumeProperty.value, this.targets.volume, 3.5 );
+    this.transportProperty.value = approach( this.transportProperty.value, this.targets.transport, 2.8 );
+    this.balanceProperty.value = approach( this.balanceProperty.value, this.targets.balance, 3.2 );
+    this.proteinProperty.value = approach( this.proteinProperty.value, clamp( Math.min( this.variables.nucleusSignal.value, this.variables.ribosomes.value, this.variables.roughER.value ) * ( 0.42 + this.atpProperty.value * 0.0058 ) * Math.max( 0.2, 1 - Math.abs( this.variables.ph.value - 50 ) / 65 ) * ( 0.55 + this.variables.proteinDemand.value / 125 ) ), 4 );
+    this.golgiBacklogProperty.value = approach( this.golgiBacklogProperty.value, clamp( ( this.proteinProperty.value * 0.78 + this.variables.proteinDemand.value * 0.22 ) * ( 1 - this.variables.golgi.value / 100 ) ), 4.5 );
+    this.exportProperty.value = approach( this.exportProperty.value, clamp( Math.min( this.proteinProperty.value - this.golgiBacklogProperty.value * 0.55, this.variables.golgi.value, this.transportProperty.value, this.atpProperty.value + 10 ) ), 3.5 );
+    this.stressProperty.value = approach( this.stressProperty.value, this.targets.stress, 5 );
+    const wasteTarget = clamp( 10 + this.variables.toxins.value * 0.32 + ( 100 - this.variables.lysosomes.value ) * 0.72 + this.stressProperty.value * 0.18 );
+    this.wasteProperty.value = approach( this.wasteProperty.value, wasteTarget, 6 );
+    const healthTarget = clamp( this.atpProperty.value * 0.27 + this.proteinProperty.value * 0.12 + ( 100 - this.wasteProperty.value ) * 0.20 + this.balanceProperty.value * 0.24 + ( 100 - this.stressProperty.value ) * 0.17 );
+    this.healthProperty.value = approach( this.healthProperty.value, healthTarget, 7 );
+    const activityFactor = 0.008 + ( this.atpProperty.value / 100 ) * ( this.transportProperty.value / 100 ) * 0.12;
     this.flowPhaseProperty.value = ( this.flowPhaseProperty.value + dt * activityFactor ) % 1;
+    this.historyElapsed += dt;
+    while ( this.historyElapsed >= this.historyInterval ) {
+      this.historyElapsed -= this.historyInterval;
+      this.historyTime += this.historyInterval;
+      this.recordHistorySample();
+    }
+  }
+
+  /** @private */
+  recordHistorySample() {
+    const sample = { time: this.historyTime, atp: this.atpProperty.value, health: this.healthProperty.value, waste: this.wasteProperty.value };
+    this.historyProperty.value = [ ...this.historyProperty.value, sample ].slice( -60 );
+  }
+
+  /** Restore the classroom healthy baseline; dependent indicators recover through step(). @public */
+  resetToHealthyCell() {
+    this.resetCell();
+    this.feedbackProperty.value = 'Healthy baseline restored. Watch the cell recover over time.';
   }
 
   /** @public */
@@ -398,6 +446,10 @@ class AnimalCellModel {
     this.clearTrials();
     this.resetCell();
     this.flowPhaseProperty.value = 0;
+    this.historyTime = 0;
+    this.historyElapsed = 0;
+    this.historyProperty.value = [];
+    this.selectedTrialsProperty.value = [];
   }
 }
 

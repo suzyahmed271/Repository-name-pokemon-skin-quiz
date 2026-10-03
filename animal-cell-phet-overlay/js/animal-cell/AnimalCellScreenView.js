@@ -14,10 +14,13 @@ import ResetAllButton from '../../../scenery-phet/js/buttons/ResetAllButton.js';
 import PhetFont from '../../../scenery-phet/js/PhetFont.js';
 import Circle from '../../../scenery/js/nodes/Circle.js';
 import Node from '../../../scenery/js/nodes/Node.js';
+import Path from '../../../scenery/js/nodes/Path.js';
 import Rectangle from '../../../scenery/js/nodes/Rectangle.js';
 import Text from '../../../scenery/js/nodes/Text.js';
 import HBox from '../../../scenery/js/layout/nodes/HBox.js';
 import FireListener from '../../../scenery/js/listeners/FireListener.js';
+import Shape from '../../../kite/js/Shape.js';
+import Vector2 from '../../../dot/js/Vector2.js';
 import HSlider from '../../../sun/js/HSlider.js';
 import RectangularPushButton from '../../../sun/js/buttons/RectangularPushButton.js';
 import AnimalCellModel from './AnimalCellModel.js';
@@ -138,8 +141,8 @@ const METRICS = [
 ];
 
 const metricProperty = ( model, key ) => model.variables[ key ] || model[ key + 'Property' ];
-const readableFont = size => new PhetFont( Math.max( 12, size * 1.18 ) );
-const readableBoldFont = size => new PhetFont( { size: Math.max( 12, size * 1.18 ), weight: 'bold' } );
+const readableFont = size => new PhetFont( Math.max( 16, size * 1.18 ) );
+const readableBoldFont = size => new PhetFont( { size: Math.max( 18, size * 1.18 ), weight: 'bold' } );
 
 class AnimalCellScreenView extends ScreenView {
   constructor( model ) {
@@ -149,7 +152,7 @@ class AnimalCellScreenView extends ScreenView {
     const leftX = 12;
     const panelTop = 126;
     const panelHeight = Math.min( 490, this.layoutBounds.height - 154 );
-    const sideWidth = 238;
+    const sideWidth = 276;
     const rightX = this.layoutBounds.maxX - sideWidth - 12;
 
     const title = new Text( 'Animal Cell Interactive Systems Lab', {
@@ -183,8 +186,9 @@ class AnimalCellScreenView extends ScreenView {
         }
         if ( item[ 1 ] === 'explore' ) {
           model.experimentPanelProperty.value = 'controls';
+          trialPanelPage = 'design';
           model.startTrial();
-          model.rightPanelProperty.value = 'data';
+          model.rightPanelProperty.value = 'notebook';
           renderLeft();
         }
         if ( item[ 1 ] === 'challenge' ) {
@@ -329,6 +333,20 @@ class AnimalCellScreenView extends ScreenView {
       cellRoot.addChild( particle );
       return particle;
     } );
+    const golgiBacklogParticles = [ 0, 1, 2, 3, 4 ].map( index => {
+      const particle = new Circle( 4, {
+        fill: '#E14D9B', stroke: '#8A2257', lineWidth: 1,
+        centerX: 66 + index % 3 * 10, centerY: -77 + Math.floor( index / 3 ) * 10,
+        visible: false
+      } );
+      cellRoot.addChild( particle );
+      return particle;
+    } );
+    const membraneParticles = [ 0, 1, 2 ].map( () => {
+      const particle = new Circle( 3, { fill: '#2E9DB6', stroke: '#176A81', lineWidth: 1 } );
+      cellRoot.addChild( particle );
+      return particle;
+    } );
     cellRoot.scale = Math.min( 0.93, ( panelHeight - 88 ) / 388 );
     cellRoot.centerX = this.layoutBounds.centerX;
     cellRoot.centerY = panelTop + panelHeight * 0.47;
@@ -348,7 +366,14 @@ class AnimalCellScreenView extends ScreenView {
     const rightContent = new Node();
     this.addChild( leftContent );
     this.addChild( rightContent );
-    let activeExploreQuestion = null;
+    let trialPanelPage = 'design';
+    const runCurrentTrial = () => {
+      const definition = AnimalCellModel.VARIABLE_DEFINITIONS.find( item => item.key === model.selectedVariableProperty.value ) || AnimalCellModel.VARIABLE_DEFINITIONS[ 0 ];
+      trialPanelPage = 'records';
+      model.comparePrediction( definition.outputKey );
+      model.recordTrial();
+      model.rightPanelProperty.value = 'notebook';
+    };
 
     const makeButton = ( label, listener, color = '#DDF3FA', size = 12 ) => new RectangularPushButton( {
       content: new Text( label, { font: readableFont( size ), maxWidth: sideWidth - 26 } ),
@@ -364,6 +389,19 @@ class AnimalCellScreenView extends ScreenView {
       const mode = model.modeProperty.value;
       const titleText = mode === 'whatif' ? 'Experiment lab' : mode === 'challenge' ? 'Rescue the Cell' : mode === 'explore' ? 'Explore & test' : 'Learn the system';
       addPanelTitle( leftContent, titleText, leftX, panelTop );
+      if ( mode === 'explore' ) {
+        leftContent.addChild( new Text( 'Adjust one input; follow ATP, waste, and cell health.', {
+          font: readableFont( 9 ), fill: '#294957', left: leftX + 14, top: panelTop + 43, maxWidth: sideWidth - 28
+        } ) );
+        const runButton = makeButton( 'RUN TRIAL', () => {
+          runCurrentTrial();
+        }, '#FFE8A3', 12 );
+        runButton.left = leftX + 14;
+        runButton.bottom = panelTop + panelHeight - 8;
+        leftContent.addChild( runButton );
+        renderSliders( mode );
+        return;
+      }
       const tabY = panelTop + 47;
       const tabButtons = [
         [ 'Environment', 'environment' ], [ 'Conditions', 'conditions' ], [ 'Cell parts', 'organelles' ]
@@ -607,17 +645,17 @@ class AnimalCellScreenView extends ScreenView {
       if ( mode === 'learn' || ( ( mode === 'whatif' || mode === 'challenge' || mode === 'explore' ) && model.experimentPanelProperty.value !== 'controls' ) ) {
         return;
       }
-      const group = model.controlGroupProperty.value;
-      const definitions = model.getDefinitions( group );
+      const exploreKeys = [ 'oxygen', 'glucose', 'water', 'ph', 'temperature', 'mitochondria', 'ribosomes', 'golgi', 'lysosomes', 'permeability' ];
+      const definitions = mode === 'explore' ? exploreKeys.map( key => AnimalCellModel.VARIABLE_DEFINITIONS.find( item => item.key === key ) ) : model.getDefinitions( model.controlGroupProperty.value );
       const allowed = new Set( model.enabledVariablesProperty.value );
       const visibleDefinitions = definitions.filter( definition => allowed.has( definition.key ) );
-      const startY = panelTop + ( mode === 'explore' ? 250 : 190 );
-      const rowHeight = Math.min( 60, ( panelTop + panelHeight - startY - 8 ) / Math.max( visibleDefinitions.length, 1 ) );
+      const startY = mode === 'explore' ? panelTop + 84 : panelTop + 190;
+      const rowHeight = mode === 'explore' ? ( panelTop + panelHeight - startY - 48 ) / Math.max( visibleDefinitions.length, 1 ) : Math.min( 60, ( panelTop + panelHeight - startY - 8 ) / Math.max( visibleDefinitions.length, 1 ) );
       visibleDefinitions.forEach( ( definition, index ) => {
         const y = startY + index * rowHeight;
         const label = new Text( definition.label, {
-          font: readableFont( 10 ), fill: '#183A4B', left: leftX + 12, top: y,
-          maxWidth: sideWidth - 45
+          font: readableFont( mode === 'explore' ? 9 : 10 ), fill: '#183A4B', left: leftX + 12, top: y,
+          maxWidth: sideWidth - 65
         } );
         const value = new Text( '', {
           font: readableBoldFont( 10 ), fill: '#125F7B',
@@ -628,23 +666,22 @@ class AnimalCellScreenView extends ScreenView {
         const updateValue = current => {
           value.string = current + '%';
           model.selectedVariableProperty.value = definition.key;
-          if ( activeExploreQuestion && model.modeProperty.value === 'explore' ) {
-            activeExploreQuestion.string = 'How does ' + definition.label.toLowerCase() + ' affect ' + definition.output + '?';
-          }
         };
         property.lazyLink( updateValue );
         sliderUnlinks.push( () => property.unlink( updateValue ) );
         const slider = new HSlider( property, new Range( 0, 100 ), {
-          trackSize: new Dimension2( sideWidth - 54, 4 ),
-          thumbSize: new Dimension2( 14, 22 ),
+          trackSize: new Dimension2( sideWidth - 68, 4 ),
+          thumbSize: new Dimension2( 16, mode === 'explore' ? 14 : 24 ),
           constrainValue: input => roundSymmetric( input / 5 ) * 5
         } );
         slider.left = leftX + 12;
-        slider.top = label.bottom + 3;
-        sliderRoot.addChild( new Text( 'Affects: ' + definition.output, {
-          font: readableFont( 8 ), fill: '#526A73', left: leftX + 12,
-          top: slider.bottom + 1, maxWidth: sideWidth - 24
-        } ) );
+        slider.top = mode === 'explore' ? y + 18 : label.bottom + 3;
+        if ( mode !== 'explore' ) {
+          sliderRoot.addChild( new Text( 'Affects: ' + definition.output, {
+            font: readableFont( 8 ), fill: '#526A73', left: leftX + 12,
+            top: slider.bottom + 1, maxWidth: sideWidth - 24
+          } ) );
+        }
         sliderRoot.addChild( label );
         sliderRoot.addChild( value );
         sliderRoot.addChild( slider );
@@ -661,7 +698,7 @@ class AnimalCellScreenView extends ScreenView {
       rightPanelUnlinks = [];
       rightContent.removeAllChildren();
       const tabs = [
-        [ 'Data', 'data' ], [ 'Part', 'organelle' ], [ 'Notebook', 'notebook' ], [ 'Teacher', 'teacher' ]
+        [ 'Data', 'data' ], [ 'Graphs', 'graphs' ], [ 'Trials', 'notebook' ], [ 'Teacher', 'teacher' ]
       ].map( item => makeButton( item[ 0 ], () => {
         model.rightPanelProperty.value = item[ 1 ];
         renderRight();
@@ -676,23 +713,23 @@ class AnimalCellScreenView extends ScreenView {
           left: rightX + 13, top: tabRow.bottom + 8
         } ) );
         METRICS.forEach( ( metric, index ) => {
-          const y = tabRow.bottom + 37 + index * 29;
+          const y = tabRow.bottom + 36 + index * 34;
           const label = new Text( metric[ 0 ], {
-            font: readableFont( 10 ), fill: '#294957', left: rightX + 13, top: y
+            font: readableFont( 9 ), fill: '#294957', left: rightX + 13, top: y, maxWidth: sideWidth - 88
           } );
           const number = new Text( '', {
             font: readableBoldFont( 10 ), fill: '#173A4A',
             right: rightX + sideWidth - 12, top: y
           } );
-          const back = new Rectangle( 0, 0, sideWidth - 26, 6, 3, 3, {
-            fill: '#E2EAED', left: rightX + 13, top: y + 17
+          const back = new Rectangle( 0, 0, sideWidth - 26, 8, 4, 4, {
+            fill: '#E2EAED', left: rightX + 13, top: y + 20
           } );
-          const bar = new Rectangle( 0, 0, 1, 6, 3, 3, {
-            fill: metric[ 2 ], left: rightX + 13, top: y + 17
+          const bar = new Rectangle( 0, 0, 1, 8, 4, 4, {
+            fill: metric[ 2 ], left: rightX + 13, top: y + 20
           } );
           const property = metricProperty( model, metric[ 1 ] );
           const updateMetric = current => {
-            number.string = current + '%';
+            number.string = Math.round( current ) + '%';
             bar.scaleX = Math.max( 0.01, current / 100 );
           };
           updateMetric( property.value );
@@ -702,35 +739,54 @@ class AnimalCellScreenView extends ScreenView {
           rightContent.addChild( back );
           rightContent.addChild( bar );
         } );
-        const trendHistories = { atp: [], health: [] };
-        const addTrendGraph = ( key, label, x ) => {
-          const graphTop = panelTop + panelHeight - 53;
-          rightContent.addChild( new Text( label, {
-            font: readableBoldFont( 9 ), fill: '#294957', left: x, top: graphTop - 14
+      }
+      else if ( panelMode === 'graphs' ) {
+        addPanelTitle( rightContent, 'Live trends · last 30 seconds', rightX, tabRow.bottom + 1 );
+        const graphSpecs = [ [ 'atp', 'ATP', '#D58A14' ], [ 'health', 'Cell health', '#35925D' ], [ 'waste', 'Waste buildup', '#C55043' ] ];
+        graphSpecs.forEach( ( spec, graphIndex ) => {
+          const graphLeft = rightX + 42;
+          const graphTop = tabRow.bottom + 57 + graphIndex * 128;
+          const graphWidth = sideWidth - 62;
+          const graphHeight = 82;
+          rightContent.addChild( new Text( spec[ 1 ], {
+            font: readableBoldFont( 10 ), fill: '#294957', left: rightX + 14, top: graphTop - 25
           } ) );
-          const bars = [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ].map( index => new Rectangle( 0, 0, 7, 2, {
-            fill: key === 'atp' ? '#E5A02C' : '#4DA66B', left: x + index * 9, bottom: graphTop + 18
+          rightContent.addChild( new Text( '100', {
+            font: readableFont( 8 ), fill: '#536A73', right: graphLeft - 5, top: graphTop - 7
           } ) );
-          bars.forEach( bar => rightContent.addChild( bar ) );
-          const history = trendHistories[ key ];
-          const updateGraph = value => {
-            if ( history.length === 0 || history[ history.length - 1 ] !== value ) {
-              history.push( value );
-              if ( history.length > bars.length ) {
-                history.shift();
-              }
+          rightContent.addChild( new Text( '0', {
+            font: readableFont( 8 ), fill: '#536A73', right: graphLeft - 5, bottom: graphTop + graphHeight + 3
+          } ) );
+          rightContent.addChild( new Text( '30 s ago', {
+            font: readableFont( 8 ), fill: '#536A73', left: graphLeft, top: graphTop + graphHeight + 4
+          } ) );
+          rightContent.addChild( new Text( 'now', {
+            font: readableFont( 8 ), fill: '#536A73', right: graphLeft + graphWidth, top: graphTop + graphHeight + 4
+          } ) );
+          const verticalAxis = new Path( Shape.lineSegment( new Vector2( graphLeft, graphTop ), new Vector2( graphLeft, graphTop + graphHeight ) ), {
+            stroke: '#78909A', lineWidth: 1.5
+          } );
+          const horizontalAxis = new Path( Shape.lineSegment( new Vector2( graphLeft, graphTop + graphHeight ), new Vector2( graphLeft + graphWidth, graphTop + graphHeight ) ), {
+            stroke: '#78909A', lineWidth: 1.5
+          } );
+          const trace = new Path( new Shape(), { stroke: spec[ 2 ], lineWidth: 3, fill: null } );
+          rightContent.addChild( verticalAxis );
+          rightContent.addChild( horizontalAxis );
+          rightContent.addChild( trace );
+          const redraw = samples => {
+            const visibleSamples = samples.slice( -60 );
+            const points = visibleSamples.map( ( sample, index ) => new Vector2(
+              graphLeft + ( visibleSamples.length <= 1 ? graphWidth : index / 59 * graphWidth ),
+              graphTop + graphHeight - sample[ spec[ 0 ] ] / 100 * graphHeight
+            ) );
+            if ( points.length === 1 ) {
+              points.unshift( new Vector2( graphLeft, points[ 0 ].y ) );
             }
-            bars.forEach( ( bar, index ) => {
-              const sample = history[ index ] || history[ 0 ] || value;
-              const height = Math.max( 2, sample / 100 * 18 );
-              bar.rectHeight = height;
-              bar.bottom = graphTop + 18;
-            } );
+            trace.shape = points.length > 1 ? Shape.polyline( points ) : new Shape();
           };
-          linkPanelProperty( model[ key + 'Property' ], updateGraph );
-        };
-        addTrendGraph( 'atp', 'ATP trend', rightX + 13 );
-        addTrendGraph( 'health', 'Health trend', rightX + 125 );
+          redraw( model.historyProperty.value );
+          linkPanelProperty( model.historyProperty, redraw );
+        } );
       }
       else if ( panelMode === 'organelle' ) {
         const data = INFO[ model.selectedOrganelleProperty.value ];
@@ -753,52 +809,118 @@ class AnimalCellScreenView extends ScreenView {
         }, '#A9E7C2', 11 ).mutate( { left: rightX + 13, top: y + 4 } ) );
       }
       else if ( panelMode === 'notebook' ) {
-        addPanelTitle( rightContent, 'Lab notebook', rightX, tabRow.bottom + 1 );
-        const note = new Text( 'Saved trials: ' + model.trialsProperty.value.length + '  |  Relative values, not real-cell measurements', {
-          font: readableFont( 9 ), fill: '#526A73', maxWidth: sideWidth - 26,
+        addPanelTitle( rightContent, 'Trial comparison', rightX, tabRow.bottom + 1 );
+        const pageTabs = new HBox( {
+          children: [ [ 'Design', 'design' ], [ 'Saved trials', 'records' ] ].map( item => makeButton( item[ 0 ], () => {
+            trialPanelPage = item[ 1 ];
+            renderRight();
+          }, trialPanelPage === item[ 1 ] ? '#9EE2F0' : '#EAF5F8', 9 ) ),
+          spacing: 4, left: rightX + 8, top: tabRow.bottom + 2
+        } );
+        rightContent.addChild( pageTabs );
+        if ( trialPanelPage === 'design' ) {
+          const designText = new Text( '', {
+            font: readableFont( 9 ), fill: '#294957', maxWidth: sideWidth - 26,
+            left: rightX + 13, top: pageTabs.bottom + 6
+          } );
+          const updateDesignText = () => {
+            const definition = AnimalCellModel.VARIABLE_DEFINITIONS.find( item => item.key === model.selectedVariableProperty.value ) || AnimalCellModel.VARIABLE_DEFINITIONS[ 0 ];
+            designText.string = 'Question: How does ' + definition.label.toLowerCase() + ' affect ' + definition.output + '?\nIndependent variable: ' + definition.label + '\nDependent variable: ' + definition.output + '\nControlled variables: other inputs stay fixed.';
+          };
+          updateDesignText();
+          linkPanelProperty( model.selectedVariableProperty, updateDesignText );
+          rightContent.addChild( designText );
+          const predictionLabel = new Text( 'Prediction', {
+            font: readableBoldFont( 10 ), fill: '#294957', left: rightX + 13, top: designText.bottom + 4
+          } );
+          rightContent.addChild( predictionLabel );
+          const predictionRow = new HBox( {
+            children: [ [ 'Increase', 'increase' ], [ 'Decrease', 'decrease' ], [ 'No change', 'stay the same' ] ].map( item => makeButton( item[ 0 ], () => {
+              model.makePrediction( item[ 1 ] );
+              renderRight();
+            }, model.predictionProperty.value === item[ 1 ] ? '#B5E8C0' : '#EAF5F8', 9 ) ),
+            spacing: 3, left: rightX + 7, top: predictionLabel.bottom + 3
+          } );
+          rightContent.addChild( predictionRow );
+          rightContent.addChild( new Text( 'Adjust the selected input. Wait for the trends, then choose RUN TRIAL.', {
+            font: readableFont( 9 ), fill: '#294957', maxWidth: sideWidth - 26,
+            left: rightX + 13, top: predictionRow.bottom + 8
+          } ) );
+          const resetButton = makeButton( 'RESET TO HEALTHY CELL', () => model.resetToHealthyCell(), '#BCEACB', 10 );
+          resetButton.left = rightX + 13;
+          resetButton.bottom = panelTop + panelHeight - 8;
+          rightContent.addChild( resetButton );
+        }
+        else {
+        const recentTrials = model.trialsProperty.value.slice( -5 );
+        const note = new Text( 'Select two trials to compare. Five recent trials are shown.', {
+          font: readableFont( 9 ), fill: '#294957', maxWidth: sideWidth - 26,
           left: rightX + 13, top: tabRow.bottom + 34
         } );
         rightContent.addChild( note );
         let y = note.bottom + 5;
-        const tableHeader = new Text( 'TRIAL     O₂       ATP      HEALTH', {
-          font: readableBoldFont( 9 ), fill: '#125F7B', left: rightX + 13, top: y
+        const tableHeader = new Text( 'TRIAL / INPUT       ATP · P · W · HEALTH', {
+          font: readableBoldFont( 8 ), fill: '#125F7B', left: rightX + 13, top: y
         } );
         rightContent.addChild( tableHeader );
-        y = tableHeader.bottom + 2;
-        model.trialsProperty.value.slice( -5 ).forEach( trial => {
-          const row = new Text( '#' + trial.number + '       ' + trial.oxygen + '%      ' + trial.atp + '      ' + trial.cellHealth + '%\nObservation: ' + trial.observation, {
-            font: readableFont( 8 ), fill: '#294957', maxWidth: sideWidth - 26,
-            left: rightX + 13, top: y
+        y = tableHeader.bottom + 3;
+        recentTrials.forEach( trial => {
+          const selected = model.selectedTrialsProperty.value.includes( trial.number );
+          const row = new Text( ( selected ? '☑ ' : '□ ' ) + '#' + trial.number + ' · ' + trial.independentVariable + ' ' + trial.value + '%\n' + Math.round( trial.atp ) + ' · ' + Math.round( trial.protein ) + ' · ' + Math.round( trial.waste ) + ' · ' + Math.round( trial.cellHealth ), {
+            font: readableFont( 8 ), fill: selected ? '#125F7B' : '#294957', maxWidth: sideWidth - 26,
+            left: rightX + 13, top: y, cursor: 'pointer'
           } );
+          row.addInputListener( new FireListener( { fire: () => {
+            const selectedNumbers = model.selectedTrialsProperty.value;
+            model.selectedTrialsProperty.value = selected ? selectedNumbers.filter( number => number !== trial.number ) : [ ...selectedNumbers, trial.number ].slice( -2 );
+          } } ) );
           rightContent.addChild( row );
-          y = row.bottom + 3;
+          y = row.bottom + 2;
         } );
-        const cerSummary = new Text( 'Claim: ' + model.cerClaimProperty.value.slice( 0, 25 ) + '…\nEvidence: ' + model.cerEvidenceProperty.value.slice( 0, 25 ) + '…\nReasoning: ' + model.cerReasoningProperty.value.slice( 0, 25 ) + '…', {
-          font: readableFont( 8 ), fill: '#294957', maxWidth: sideWidth - 26,
-          left: rightX + 13, top: y
-        } );
-        rightContent.addChild( cerSummary );
-        const cerButtons = new HBox( {
-          children: [ 'claim', 'evidence', 'reasoning' ].map( role => makeButton( 'Next ' + role, () => {
-            model.cycleCER( role );
-            renderRight();
-          }, '#EAF5F8', 8 ) ),
-          spacing: 2, left: rightX + 8, top: cerSummary.bottom + 2
-        } );
-        rightContent.addChild( cerButtons );
-        rightContent.addChild( makeButton( 'Reset experiment', () => {
-          model.resetCell();
-          model.clearTrials();
-          model.startTrial();
-          model.rightPanelProperty.value = 'notebook';
-          renderRight();
-        }, '#F2E6CA', 9 ).mutate( { left: rightX + 13, top: cerButtons.bottom + 3 } ) );
+        const selectedTrials = model.selectedTrialsProperty.value.map( number => model.trialsProperty.value.find( trial => trial.number === number ) ).filter( Boolean );
+        if ( selectedTrials.length ) {
+          const observation = new Text( 'Observation · Trial #' + selectedTrials[ 0 ].number + ': ' + selectedTrials[ 0 ].observation, {
+            font: readableFont( 8 ), fill: '#294957', maxWidth: sideWidth - 26,
+            left: rightX + 13, top: Math.min( y + 2, panelTop + panelHeight - 146 )
+          } );
+          rightContent.addChild( observation );
+          y = observation.bottom + 2;
+        }
+        if ( selectedTrials.length >= 2 ) {
+          const pair = selectedTrials.slice( -2 );
+          const evidence = new Text( 'Evidence: does the input difference align with ATP and cell health?', {
+            font: readableBoldFont( 8 ), fill: '#125F7B', maxWidth: sideWidth - 26,
+            left: rightX + 13, top: Math.min( y + 3, panelTop + panelHeight - 104 )
+          } );
+          rightContent.addChild( evidence );
+          [ [ 'ATP', 'atp', '#D58A14' ], [ 'Health', 'cellHealth', '#35925D' ] ].forEach( ( metric, index ) => {
+            const chartY = evidence.bottom + 2 + index * 24;
+            const label = new Text( metric[ 0 ] + ' · #' + pair[ 0 ].number + ': ' + Math.round( pair[ 0 ][ metric[ 1 ] ] ) + '   #' + pair[ 1 ].number + ': ' + Math.round( pair[ 1 ][ metric[ 1 ] ] ), {
+              font: readableFont( 8 ), fill: '#294957', left: rightX + 13, top: chartY
+            } );
+            const firstBar = new Rectangle( 0, 0, Math.max( 2, pair[ 0 ][ metric[ 1 ] ] * 0.65 ), 7, {
+              fill: metric[ 2 ], left: rightX + 13, top: label.bottom + 1
+            } );
+            const secondBar = new Rectangle( 0, 0, Math.max( 2, pair[ 1 ][ metric[ 1 ] ] * 0.65 ), 7, {
+              fill: '#91B7C5', left: rightX + 13, top: label.bottom + 9
+            } );
+            rightContent.addChild( label );
+            rightContent.addChild( firstBar );
+            rightContent.addChild( secondBar );
+          } );
+        }
+        const healthyButton = makeButton( 'RESET TO HEALTHY CELL', () => model.resetToHealthyCell(), '#BCEACB', 10 );
+        healthyButton.left = rightX + 13;
+        healthyButton.bottom = panelTop + panelHeight - 8;
+        rightContent.addChild( healthyButton );
+        }
       }
       else {
         renderTeacherPanel( rightContent, tabRow );
       }
     };
 
+    let teacherPage = 0;
     const renderTeacherPanel = ( root, tabRow ) => {
       const teacherOn = model.teacherModeProperty.value;
       addPanelTitle( root, 'Teacher Mode', rightX, tabRow.bottom + 1 );
@@ -816,8 +938,9 @@ class AnimalCellScreenView extends ScreenView {
         } ) );
         return;
       }
-      const groupToggle = makeButton( model.teacherListProperty.value === 'variables' ? 'Show organelles to include' : 'Show variables to include', () => {
+      const groupToggle = makeButton( model.teacherListProperty.value === 'variables' ? 'Choose variables' : 'Choose cell structures', () => {
         model.teacherListProperty.value = model.teacherListProperty.value === 'variables' ? 'organelles' : 'variables';
+        teacherPage = 0;
         renderRight();
       }, '#DCEEF4', 9 );
       groupToggle.left = rightX + 13;
@@ -827,11 +950,19 @@ class AnimalCellScreenView extends ScreenView {
                     AnimalCellModel.VARIABLE_DEFINITIONS.map( item => [ item.key, item.label ] ) :
                     Object.keys( INFO ).map( key => [ key, INFO[ key ].name ] );
       const enabled = model.teacherListProperty.value === 'variables' ? model.enabledVariablesProperty : model.enabledOrganellesProperty;
-      names.forEach( ( item, index ) => {
+      const pageCount = Math.ceil( names.length / 7 );
+      const pageButton = makeButton( 'Page ' + ( teacherPage + 1 ) + ' of ' + pageCount + ' · More', () => {
+        teacherPage = ( teacherPage + 1 ) % pageCount;
+        renderRight();
+      }, '#EAF5F8', 9 );
+      pageButton.left = rightX + 13;
+      pageButton.top = groupToggle.bottom + 4;
+      root.addChild( pageButton );
+      names.slice( teacherPage * 7, teacherPage * 7 + 7 ).forEach( ( item, index ) => {
         const isEnabled = enabled.value.includes( item[ 0 ] );
         const row = new Text( ( isEnabled ? '✓ ' : '□ ' ) + item[ 1 ], {
           font: readableFont( 9 ), fill: isEnabled ? '#235B3D' : '#785454',
-          left: rightX + 15, top: groupToggle.bottom + 6 + index * 19,
+          left: rightX + 15, top: pageButton.bottom + 3 + index * 29,
           maxWidth: sideWidth - 30, cursor: 'pointer'
         } );
         row.addInputListener( new FireListener( { fire: () => {
@@ -889,6 +1020,16 @@ class AnimalCellScreenView extends ScreenView {
     model.supportMessageProperty.link( () => renderLeft() );
     model.hintsEnabledProperty.link( () => renderLeft() );
     model.trialsProperty.link( () => renderRight() );
+    model.selectedTrialsProperty.link( () => {
+      if ( model.rightPanelProperty.value === 'notebook' ) {
+        renderRight();
+      }
+    } );
+    model.selectedTrialsProperty.link( () => {
+      if ( model.rightPanelProperty.value === 'notebook' ) {
+        renderRight();
+      }
+    } );
     model.teacherModeProperty.link( () => renderRight() );
     model.teacherListProperty.link( () => renderRight() );
     model.challengeComplexityProperty.link( () => {
@@ -913,7 +1054,7 @@ class AnimalCellScreenView extends ScreenView {
       membrane.lineWidth = health < 45 ? 15 : 10;
     } );
     const organelleFunctions = {
-      mitochondria: 'mitochondria', ribosomes: 'ribosomes', roughER: 'ribosomes',
+      mitochondria: 'mitochondria', ribosomes: 'ribosomes', roughER: 'roughER',
       golgi: 'golgi', lysosome: 'lysosomes', nucleolus: 'nucleusSignal', nucleus: 'nucleusSignal',
       smoothER: 'ph'
     };
@@ -944,11 +1085,24 @@ class AnimalCellScreenView extends ScreenView {
     } );
     model.transportProperty.link( transport => {
       organelleNodes.vesicles.opacity = Math.min( 1, 0.25 + transport / 130 );
+      membraneParticles.forEach( ( particle, index ) => {
+        particle.opacity = Math.min( 1, 0.2 + transport / 125 );
+        particle.visible = transport > index * 26;
+      } );
+    } );
+    model.golgiBacklogProperty.link( backlog => {
+      golgiBacklogParticles.forEach( ( particle, index ) => {
+        particle.visible = backlog > index * 14 + 8;
+      } );
     } );
     model.flowPhaseProperty.link( phase => {
       const proteinPath = [ [ -150, 28 ], [ -87, 89 ], [ 97, -63 ], [ 149, 66 ], [ 185, 4 ] ];
+      const golgiFunction = model.variables.golgi.value;
       proteinParticles.forEach( ( particle, index ) => {
-        const t = ( phase + index / proteinParticles.length ) % 1;
+        let t = ( phase + index / proteinParticles.length ) % 1;
+        if ( golgiFunction < 95 && t > 0.47 ) {
+          t = 0.47;
+        }
         const pathPosition = t * ( proteinPath.length - 1 );
         const segment = Math.min( proteinPath.length - 2, Math.floor( pathPosition ) );
         const segmentProgress = pathPosition - segment;
@@ -967,6 +1121,12 @@ class AnimalCellScreenView extends ScreenView {
         particle.centerX = 138 - t * 52;
         particle.centerY = 75 + t * 25;
       } );
+      membraneParticles.forEach( ( particle, index ) => {
+        const t = ( phase * 2 + index / membraneParticles.length ) % 1;
+        particle.centerX = -174 + t * 348;
+        particle.centerY = 4 + Math.sin( t * Math.PI * 2 ) * 72;
+      } );
+      organelleNodes.mitochondria.scale = 0.88 + model.atpProperty.value / 400 + Math.sin( phase * Math.PI * 2 ) * model.variables.mitochondria.value / 1800;
     } );
 
     this.addChild( new Text( 'Simplified model: relative indicators show selected relationships, not real cell measurements.', {
@@ -982,6 +1142,7 @@ class AnimalCellScreenView extends ScreenView {
     renderLeft();
     renderRight();
   }
+
 }
 
 export default AnimalCellScreenView;
