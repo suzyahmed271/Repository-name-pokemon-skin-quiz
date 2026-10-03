@@ -366,6 +366,7 @@ class AnimalCellScreenView extends ScreenView {
     const rightContent = new Node();
     this.addChild( leftContent );
     this.addChild( rightContent );
+    let activeExploreQuestion = null;
     let trialPanelPage = 'design';
     const runCurrentTrial = () => {
       const definition = AnimalCellModel.VARIABLE_DEFINITIONS.find( item => item.key === model.selectedVariableProperty.value ) || AnimalCellModel.VARIABLE_DEFINITIONS[ 0 ];
@@ -729,7 +730,7 @@ class AnimalCellScreenView extends ScreenView {
           } );
           const property = metricProperty( model, metric[ 1 ] );
           const updateMetric = current => {
-            number.string = Math.round( current ) + '%';
+            number.string = roundSymmetric( current ) + '%';
             bar.scaleX = Math.max( 0.01, current / 100 );
           };
           updateMetric( property.value );
@@ -873,7 +874,7 @@ class AnimalCellScreenView extends ScreenView {
         y = tableHeader.bottom + 3;
         recentTrials.forEach( trial => {
           const selected = model.selectedTrialsProperty.value.includes( trial.number );
-          const row = new Text( ( selected ? '☑ ' : '□ ' ) + '#' + trial.number + ' · ' + trial.independentVariable + ' ' + trial.value + '%\n' + Math.round( trial.atp ) + ' · ' + Math.round( trial.protein ) + ' · ' + Math.round( trial.waste ) + ' · ' + Math.round( trial.cellHealth ), {
+          const row = new Text( ( selected ? '☑ ' : '□ ' ) + '#' + trial.number + ' · ' + trial.independentVariable + ' ' + trial.value + '%\n' + roundSymmetric( trial.atp ) + ' · ' + roundSymmetric( trial.protein ) + ' · ' + roundSymmetric( trial.waste ) + ' · ' + roundSymmetric( trial.cellHealth ), {
             font: readableFont( 8 ), fill: selected ? '#125F7B' : '#294957', maxWidth: sideWidth - 26,
             left: rightX + 13, top: y, cursor: 'pointer'
           } );
@@ -902,7 +903,7 @@ class AnimalCellScreenView extends ScreenView {
           rightContent.addChild( evidence );
           [ [ 'ATP', 'atp', '#D58A14' ], [ 'Health', 'cellHealth', '#35925D' ] ].forEach( ( metric, index ) => {
             const chartY = evidence.bottom + 2 + index * 24;
-            const label = new Text( metric[ 0 ] + ' · #' + pair[ 0 ].number + ': ' + Math.round( pair[ 0 ][ metric[ 1 ] ] ) + '   #' + pair[ 1 ].number + ': ' + Math.round( pair[ 1 ][ metric[ 1 ] ] ), {
+            const label = new Text( metric[ 0 ] + ' · #' + pair[ 0 ].number + ': ' + roundSymmetric( pair[ 0 ][ metric[ 1 ] ] ) + '   #' + pair[ 1 ].number + ': ' + roundSymmetric( pair[ 1 ][ metric[ 1 ] ] ), {
               font: readableFont( 8 ), fill: '#294957', left: rightX + 13, top: chartY
             } );
             const firstBar = new Rectangle( 0, 0, Math.max( 2, pair[ 0 ][ metric[ 1 ] ] * 0.65 ), 7, {
