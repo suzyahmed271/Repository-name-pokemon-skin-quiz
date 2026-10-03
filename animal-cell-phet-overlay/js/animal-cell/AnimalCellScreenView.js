@@ -382,8 +382,8 @@ class AnimalCellScreenView extends ScreenView {
           content: new Text( 'Reset Healthy Cell', { font: new PhetFont( 14 ) } ),
           baseColor: '#9FF0C4',
           listener: () => {
-          model.resetCell();
-        }
+            model.resetCell();
+          }
         } );
         const vbox = new VBox( {
           children: [ ...buttons, resetButton ],
