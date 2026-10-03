@@ -3,11 +3,8 @@ name: Build Animal Cell PhET Adaptation
 on:
   workflow_dispatch:
   push:
-    branches:
-      - animal-cell-phet
-    paths:
-      - 'animal-cell-phet-overlay/**'
-      - '.github/workflows/build-animal-cell-phet.yml'
+    branches: [animal-cell-phet]
+    paths: ['animal-cell-phet-overlay/**', '.github/workflows/build-animal-cell-phet.yml']
 permissions:
   contents: read
 jobs:
@@ -17,28 +14,21 @@ jobs:
     steps:
       - name: Checkout adaptation overlay
         uses: actions/checkout@v4
-        with:
-          ref: animal-cell-phet
+        with: { ref: animal-cell-phet }
       - name: Set up Node
         uses: actions/setup-node@v4
-        with:
-          node-version: '22'
+        with: { node-version: '22' }
       - name: Clone PhET repositories
         shell: bash
         run: |
           set -e
           mkdir -p workspace
           cd workspace
-          for repo in assert axon babel brand chipper dot gene-expression-essentials griddle joist kite phet-core phetcommon phetmarks query-string-machine scenery scenery-phet sherpa sun tambo tandem twixt utterance-queue; do
-            git clone --depth 1 "https://github.com/phetsims/$repo.git"
-          done
+          for repo in assert axon babel brand chipper dot gene-expression-essentials griddle joist kite phet-core phetcommon phetmarks query-string-machine scenery scenery-phet sherpa sun tambo tandem twixt utterance-queue; do git clone --depth 1 "https://github.com/phetsims/$repo.git"; done
           git clone --depth 1 https://github.com/phetsims/perennial.git perennial-alias
-          for repo in assert axon babel brand chipper dot gene-expression-essentials griddle joist kite phet-core phetcommon phetmarks query-string-machine scenery scenery-phet sherpa sun tambo tandem twixt utterance-queue; do
+          for repo in assert axon babel brand dot gene-expression-essentials griddle joist kite phet-core phetcommon phetmarks query-string-machine scenery scenery-phet sherpa sun tambo tandem twixt utterance-queue; do
             sha=$(node -e "const d=require('./gene-expression-essentials/dependencies.json'); process.stdout.write(d['$repo']?.sha || '')")
-            if [ -n "$sha" ]; then
-              git -C "$repo" fetch --quiet --unshallow
-              git -C "$repo" checkout --quiet "$sha"
-            fi
+            if [ -n "$sha" ]; then git -C "$repo" fetch --quiet --unshallow; git -C "$repo" checkout --quiet "$sha"; fi
           done
       - name: Overlay Animal Cell source
         shell: bash
@@ -51,12 +41,9 @@ jobs:
         shell: bash
         run: |
           set -e
-          cd workspace/chipper
-          npm install
-          cd ../perennial-alias
-          npm install
-          cd ../gene-expression-essentials
-          npm install
+          cd workspace/chipper; npm install
+          cd ../perennial-alias; npm install
+          cd ../gene-expression-essentials; npm install
       - name: Build adapted-from-phet HTML
         shell: bash
         run: |
@@ -71,6 +58,4 @@ jobs:
           cp animal-cell-phet-overlay/README.md dist/README.md
       - name: Upload built simulation
         uses: actions/upload-artifact@v4
-        with:
-          name: animal-cell-phet-adapted
-          path: dist/
+        with: { name: animal-cell-phet-adapted, path: dist/ }
