@@ -553,7 +553,7 @@ class AnimalCellScreenView extends ScreenView {
           model.experimentPanelProperty.value = item[ 1 ];
           renderLeft();
         }, model.experimentPanelProperty.value === item[ 1 ] ? '#BFEAF2' : '#EAF5F8', 9 ) );
-        const taskRow = new HBox( { children: taskTabs, spacing: 4, left: leftX + 10, top: tabs.bottom + 3 } );
+        const taskRow = new HBox( { children: taskTabs, spacing: 4, left: leftX + 10, top: taskTop } );
         leftContent.addChild( taskRow );
         taskTop = taskRow.bottom + 6;
       }
