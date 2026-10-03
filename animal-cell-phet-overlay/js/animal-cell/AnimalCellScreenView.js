@@ -777,14 +777,11 @@ class AnimalCellScreenView extends ScreenView {
           const redraw = samples => {
             const visibleSamples = samples.slice( -60 );
             const points = visibleSamples.map( ( sample, index ) => new Vector2(
-              graphLeft + ( visibleSamples.length <= 1 ? graphWidth : index / 59 * graphWidth ),
+              graphLeft + ( index + 60 - visibleSamples.length ) / 59 * graphWidth,
               graphTop + graphHeight - sample[ spec[ 0 ] ] / 100 * graphHeight
             ) );
-            if ( points.length === 1 ) {
-              points.unshift( new Vector2( graphLeft, points[ 0 ].y ) );
-            }
             const graphShape = new Shape();
-            if ( points.length > 1 ) {
+            if ( points.length ) {
               graphShape.moveToPoint( points[ 0 ] );
               points.slice( 1 ).forEach( point => {
                 graphShape.lineToPoint( point );
