@@ -60,6 +60,9 @@ class AnimalCellModel {
     this.cerReasoningProperty = new Property( 'The changed process is connected to the output I measured.' );
     this.trialsProperty = new Property( [] );
     this.trialStartProperty = new Property( null );
+    this.trialStartSettingsProperty = new Property( null );
+    this.trialLockedProperty = new Property( false );
+    this.advancedExploreProperty = new Property( false );
     this.challengeProperty = new Property( null );
     this.challengeFeedbackProperty = new Property( 'Inspect the live evidence and test a possible cause.' );
     this.hintsEnabledProperty = new Property( true );
@@ -91,6 +94,11 @@ class AnimalCellModel {
     this.transportProperty = new NumberProperty( 0 );
     this.stressProperty = new NumberProperty( 0 );
     this.flowPhaseProperty = new NumberProperty( 0 );
+    this.proteinFlowPhaseProperty = new NumberProperty( 0 );
+    this.wasteFlowPhaseProperty = new NumberProperty( 0 );
+    this.transportFlowPhaseProperty = new NumberProperty( 0 );
+    this.focusEffectKeyProperty = new Property( null );
+    this.focusEffectTime = 0;
     this.golgiBacklogProperty = new NumberProperty( 0 );
     this.historyProperty = new Property( [] );
     this.historyTime = 0;
@@ -172,8 +180,21 @@ class AnimalCellModel {
   /** Independent-variable change listener; take the starting snapshot only once per trial. @public */
   startTrial() {
     this.trialStartProperty.value = this.getOutputSnapshot();
+    this.trialStartSettingsProperty.value = Object.fromEntries( Object.entries( this.variables ).map( ( [ key, property ] ) => [ key, property.value ] ) );
+    this.trialLockedProperty.value = false;
     this.predictionProperty.value = null;
     this.feedbackProperty.value = 'Trial started. Change one variable and observe the evidence.';
+  }
+
+  /** Briefly highlight the cell structure most directly affected by a changed input. @public */
+  triggerFocusEffect( variableKey ) {
+    const focusKeys = {
+      oxygen: 'mitochondria', glucose: 'mitochondria', mitochondria: 'mitochondria',
+      ribosomes: 'ribosomes', roughER: 'roughER', golgi: 'golgi', lysosomes: 'lysosome',
+      permeability: 'membrane', water: 'membrane', ph: 'smoothER', temperature: 'mitochondria'
+    };
+    this.focusEffectKeyProperty.value = focusKeys[ variableKey ] || 'cytoplasm';
+    this.focusEffectTime = 1.6;
   }
 
   /** @public */
@@ -261,10 +282,13 @@ class AnimalCellModel {
       question: challenge ? 'Rescue challenge: ' + challenge.clue : this.modeProperty.value === 'explore' ? 'How does ' + definition.label.toLowerCase() + ' affect ' + definition.output + '?' : scenario.question,
       prediction: this.predictionProperty.value || 'Not recorded',
       independentVariable: definition.label,
+      independentVariableKey: independentVariable,
       value: this.variables[ independentVariable ].value,
       dependentVariable: dependentVariable,
       before: start[ dependentVariable ],
       result: after[ dependentVariable ],
+      beforeSettings: this.trialStartSettingsProperty.value || Object.fromEntries( Object.entries( this.variables ).map( ( [ key, property ] ) => [ key, property.value ] ) ),
+      beforeOutputs: start,
       oxygen: this.variables.oxygen.value,
       atp: after.atp,
       protein: after.protein,
@@ -392,8 +416,18 @@ class AnimalCellModel {
     this.wasteProperty.value = approach( this.wasteProperty.value, wasteTarget, 6 );
     const healthTarget = clamp( this.atpProperty.value * 0.27 + this.proteinProperty.value * 0.12 + ( 100 - this.wasteProperty.value ) * 0.20 + this.balanceProperty.value * 0.24 + ( 100 - this.stressProperty.value ) * 0.17 );
     this.healthProperty.value = approach( this.healthProperty.value, healthTarget, 7 );
-    const activityFactor = 0.008 + ( this.atpProperty.value / 100 ) * ( this.transportProperty.value / 100 ) * 0.12;
+    const conditionFactor = Math.max( 0.12, 1 - this.stressProperty.value / 140 );
+    const activityFactor = 0.008 + ( this.atpProperty.value / 100 ) * ( this.transportProperty.value / 100 ) * conditionFactor * 0.12;
     this.flowPhaseProperty.value = ( this.flowPhaseProperty.value + dt * activityFactor ) % 1;
+    this.proteinFlowPhaseProperty.value = ( this.proteinFlowPhaseProperty.value + dt * activityFactor * Math.min( this.variables.ribosomes.value, this.variables.roughER.value, this.variables.golgi.value ) / 100 ) % 1;
+    this.wasteFlowPhaseProperty.value = ( this.wasteFlowPhaseProperty.value + dt * activityFactor * this.variables.lysosomes.value / 100 ) % 1;
+    this.transportFlowPhaseProperty.value = ( this.transportFlowPhaseProperty.value + dt * activityFactor * ( 0.4 + this.variables.permeability.value / 60 ) ) % 1;
+    if ( this.focusEffectTime > 0 ) {
+      this.focusEffectTime = Math.max( 0, this.focusEffectTime - dt );
+      if ( this.focusEffectTime === 0 ) {
+        this.focusEffectKeyProperty.value = null;
+      }
+    }
     this.historyElapsed += dt;
     while ( this.historyElapsed >= this.historyInterval ) {
       this.historyElapsed -= this.historyInterval;
@@ -421,6 +455,8 @@ class AnimalCellModel {
     } );
     this.predictionProperty.value = null;
     this.trialStartProperty.value = this.getOutputSnapshot();
+    this.trialStartSettingsProperty.value = Object.fromEntries( Object.entries( this.variables ).map( ( [ key, property ] ) => [ key, property.value ] ) );
+    this.trialLockedProperty.value = false;
     this.challengeProperty.value = null;
     this.feedbackProperty.value = 'Baseline restored. Start a new fair test.';
   }
@@ -430,6 +466,8 @@ class AnimalCellModel {
     this.modeProperty.value = 'learn';
     this.selectedOrganelleProperty.value = 'nucleus';
     this.selectedVariableProperty.value = 'oxygen';
+    this.trialLockedProperty.value = false;
+    this.advancedExploreProperty.value = false;
     this.controlGroupProperty.value = 'environment';
     this.experimentPanelProperty.value = 'question';
     this.rightPanelProperty.value = 'data';
@@ -446,6 +484,9 @@ class AnimalCellModel {
     this.clearTrials();
     this.resetCell();
     this.flowPhaseProperty.value = 0;
+    this.proteinFlowPhaseProperty.value = 0;
+    this.wasteFlowPhaseProperty.value = 0;
+    this.transportFlowPhaseProperty.value = 0;
     this.historyTime = 0;
     this.historyElapsed = 0;
     this.historyProperty.value = [];

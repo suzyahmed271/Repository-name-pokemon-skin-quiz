@@ -143,6 +143,13 @@ const METRICS = [
 const metricProperty = ( model, key ) => model.variables[ key ] || model[ key + 'Property' ];
 const readableFont = size => new PhetFont( Math.max( 16, size * 1.18 ) );
 const readableBoldFont = size => new PhetFont( { size: Math.max( 18, size * 1.18 ), weight: 'bold' } );
+const mixColor = ( first, second, amount ) => {
+  const parse = color => [ 1, 3, 5 ].map( index => parseInt( color.slice( index, index + 2 ), 16 ) );
+  const a = parse( first );
+  const b = parse( second );
+  const channels = a.map( ( value, index ) => roundSymmetric( value + ( b[ index ] - value ) * amount ) );
+  return '#' + channels.map( channel => channel.toString( 16 ).padStart( 2, '0' ) ).join( '' );
+};
 
 class AnimalCellScreenView extends ScreenView {
   constructor( model ) {
@@ -151,12 +158,12 @@ class AnimalCellScreenView extends ScreenView {
     const viewWidth = this.layoutBounds.width;
     const leftX = 12;
     const panelTop = 126;
-    const panelHeight = Math.min( 490, this.layoutBounds.height - 154 );
+    const panelHeight = Math.min( 540, this.layoutBounds.height - 154 );
     const sideWidth = 276;
     const rightX = this.layoutBounds.maxX - sideWidth - 12;
 
     const title = new Text( 'Animal Cell Interactive Systems Lab', {
-      font: new PhetFont( { size: 26, weight: 'bold' } ),
+      font: new PhetFont( { size: 32, weight: 'bold' } ),
       fill: '#125F7B', centerX: this.layoutBounds.centerX, top: 8,
       maxWidth: viewWidth - 24
     } );
@@ -173,7 +180,7 @@ class AnimalCellScreenView extends ScreenView {
       [ 'Rescue the Cell', 'challenge', '#FFE080' ]
     ];
     const modeButtons = modeItems.map( item => new RectangularPushButton( {
-      content: new Text( item[ 0 ], { font: readableFont( 14 ) } ),
+      content: new Text( item[ 0 ], { font: readableFont( 17 ) } ),
       baseColor: item[ 2 ], listener: () => {
         model.modeProperty.value = item[ 1 ];
         if ( item[ 1 ] === 'challenge' && !model.challengeProperty.value ) {
@@ -187,6 +194,7 @@ class AnimalCellScreenView extends ScreenView {
         if ( item[ 1 ] === 'explore' ) {
           model.experimentPanelProperty.value = 'controls';
           trialPanelPage = 'design';
+          model.resetToHealthyCell();
           model.startTrial();
           model.rightPanelProperty.value = 'notebook';
           renderLeft();
@@ -230,6 +238,7 @@ class AnimalCellScreenView extends ScreenView {
 
     const organelleNodes = {};
     const organelleShapes = {};
+    let mitochondriaGlowNode = null;
     const createOrganelle = key => {
       const data = INFO[ key ];
       const [ x, y ] = data.position;
@@ -242,6 +251,10 @@ class AnimalCellScreenView extends ScreenView {
         addPart( new Rectangle( -39, -20, 78, 40, 20, 20, {
           fill: data.color, stroke: '#34505C', lineWidth: 2
         } ) );
+        mitochondriaGlowNode = new Circle( 9, {
+          fill: '#FFF28A', stroke: '#B87616', lineWidth: 1, centerX: 0, centerY: 0
+        } );
+        addPart( mitochondriaGlowNode );
         [ -10, 0, 10 ].forEach( foldY => {
           addPart( new Rectangle( -18, foldY - 1.5, 36, 3, 1.5, 1.5, {
             fill: '#AD512F', rotation: foldY / 35
@@ -309,17 +322,17 @@ class AnimalCellScreenView extends ScreenView {
     Object.keys( INFO ).filter( key => key !== 'membrane' && key !== 'cytoplasm' ).forEach( createOrganelle );
 
     // Moving particles follow the simplified protein, energy, and waste pathways.
-    const proteinParticles = [ 0, 1, 2 ].map( () => {
+    const proteinParticles = [ 0, 1, 2, 3, 4, 5 ].map( () => {
       const particle = new Circle( 5, { fill: '#E14D9B', stroke: '#8A2257', lineWidth: 1 } );
       cellRoot.addChild( particle );
       return particle;
     } );
-    const energyParticles = [ 0, 1, 2 ].map( () => {
+    const energyParticles = [ 0, 1, 2, 3, 4, 5, 6, 7 ].map( () => {
       const particle = new Circle( 4, { fill: '#F3A719', stroke: '#A66A00', lineWidth: 1 } );
       cellRoot.addChild( particle );
       return particle;
     } );
-    const wasteParticles = [ 0, 1 ].map( () => {
+    const wasteParticles = [ 0, 1, 2 ].map( () => {
       const particle = new Circle( 5, { fill: '#8B6C61', stroke: '#5D443C', lineWidth: 1 } );
       cellRoot.addChild( particle );
       return particle;
@@ -328,7 +341,7 @@ class AnimalCellScreenView extends ScreenView {
       const particle = new Circle( 4, {
         fill: '#9D7667', stroke: '#60483E', lineWidth: 1,
         centerX: 56 + index % 3 * 16, centerY: 77 + Math.floor( index / 3 ) * 18,
-        visible: false
+        visible: true
       } );
       cellRoot.addChild( particle );
       return particle;
@@ -337,12 +350,12 @@ class AnimalCellScreenView extends ScreenView {
       const particle = new Circle( 4, {
         fill: '#E14D9B', stroke: '#8A2257', lineWidth: 1,
         centerX: 66 + index % 3 * 10, centerY: -77 + Math.floor( index / 3 ) * 10,
-        visible: false
+        visible: true
       } );
       cellRoot.addChild( particle );
       return particle;
     } );
-    const membraneParticles = [ 0, 1, 2 ].map( () => {
+    const membraneParticles = [ 0, 1, 2, 3, 4, 5 ].map( () => {
       const particle = new Circle( 3, { fill: '#2E9DB6', stroke: '#176A81', lineWidth: 1 } );
       cellRoot.addChild( particle );
       return particle;
@@ -368,11 +381,20 @@ class AnimalCellScreenView extends ScreenView {
     this.addChild( rightContent );
     let activeExploreQuestion = null;
     let trialPanelPage = 'design';
+    let trialPage = 0;
+    let variableMenuOpen = false;
     const runCurrentTrial = () => {
+      const startingSettings = model.trialStartSettingsProperty.value || {};
+      const changedInputs = Object.keys( startingSettings ).filter( key => model.variables[ key ].value !== startingSettings[ key ] );
+      if ( changedInputs.length > 1 ) {
+        model.feedbackProperty.value = 'For a fair test, change only one input from its starting value. Restore the others, then run again.';
+        return;
+      }
       const definition = AnimalCellModel.VARIABLE_DEFINITIONS.find( item => item.key === model.selectedVariableProperty.value ) || AnimalCellModel.VARIABLE_DEFINITIONS[ 0 ];
       trialPanelPage = 'records';
       model.comparePrediction( definition.outputKey );
       model.recordTrial();
+      model.trialLockedProperty.value = true;
       model.rightPanelProperty.value = 'notebook';
     };
 
@@ -381,7 +403,7 @@ class AnimalCellScreenView extends ScreenView {
       baseColor: color, listener: listener
     } );
     const addPanelTitle = ( root, text, x, y ) => root.addChild( new Text( text, {
-      font: readableBoldFont( 18 ), fill: '#125F7B',
+      font: readableBoldFont( 22 ), fill: '#125F7B',
       left: x + 14, top: y + 12, maxWidth: sideWidth - 28
     } ) );
 
@@ -391,15 +413,97 @@ class AnimalCellScreenView extends ScreenView {
       const titleText = mode === 'whatif' ? 'Experiment lab' : mode === 'challenge' ? 'Rescue the Cell' : mode === 'explore' ? 'Explore & test' : 'Learn the system';
       addPanelTitle( leftContent, titleText, leftX, panelTop );
       if ( mode === 'explore' ) {
-        leftContent.addChild( new Text( 'Adjust one input; follow ATP, waste, and cell health.', {
-          font: readableFont( 9 ), fill: '#294957', left: leftX + 14, top: panelTop + 43, maxWidth: sideWidth - 28
+        const exploreKeys = [ 'oxygen', 'glucose', 'water', 'ph', 'temperature', 'mitochondria', 'ribosomes', 'golgi', 'lysosomes', 'permeability' ];
+        const currentDefinition = AnimalCellModel.VARIABLE_DEFINITIONS.find( item => item.key === model.selectedVariableProperty.value ) || AnimalCellModel.VARIABLE_DEFINITIONS[ 0 ];
+        const advancedExplore = model.advancedExploreProperty.value;
+        leftContent.addChild( new Text( advancedExplore ? 'Advanced controls · compare input settings.' : 'One input changes; other conditions stay controlled.', {
+          font: readableFont( 11 ), fill: '#294957', left: leftX + 14, top: panelTop + 45, maxWidth: sideWidth - 28
         } ) );
-        const runButton = makeButton( 'RUN TRIAL', () => {
-          runCurrentTrial();
-        }, '#FFE8A3', 12 );
-        runButton.left = leftX + 14;
-        runButton.bottom = panelTop + panelHeight - 8;
+        let chooseInputButton = null;
+        let menuRows = 0;
+        if ( !advancedExplore ) {
+          chooseInputButton = makeButton( 'INPUT: ' + currentDefinition.label + '  ▾', () => {
+            variableMenuOpen = !variableMenuOpen;
+            renderLeft();
+          }, '#DDF3FA', 12 );
+          chooseInputButton.left = leftX + 14;
+          chooseInputButton.top = panelTop + 72;
+          chooseInputButton.enabled = !model.trialLockedProperty.value;
+          leftContent.addChild( chooseInputButton );
+          if ( variableMenuOpen && !model.trialLockedProperty.value ) {
+            AnimalCellModel.VARIABLE_DEFINITIONS.filter( definition => exploreKeys.includes( definition.key ) ).forEach( ( definition, index ) => {
+              const column = index < 5 ? 0 : 1;
+              const row = index % 5;
+              const option = makeButton( definition.label, () => {
+                model.selectedVariableProperty.value = definition.key;
+                variableMenuOpen = false;
+                renderLeft();
+              }, definition.key === currentDefinition.key ? '#9EE2F0' : '#EAF5F8', 8 );
+              option.left = leftX + 12 + column * ( sideWidth / 2 - 2 );
+              option.top = chooseInputButton.bottom + 4 + row * 31;
+              leftContent.addChild( option );
+            } );
+            menuRows = 5;
+          }
+          if ( !menuRows ) {
+            const controlledText = new Text( '🔒 CONTROLLED: all other inputs held at baseline.', {
+              font: readableBoldFont( 9 ), fill: '#315C48', left: leftX + 14,
+              top: chooseInputButton.bottom + 8, maxWidth: sideWidth - 28
+            } );
+            leftContent.addChild( controlledText );
+            leftContent.addChild( new Text( 'Question: How does ' + currentDefinition.label.toLowerCase() + ' affect ' + currentDefinition.output + '?', {
+              font: readableFont( 10 ), fill: '#294957', left: leftX + 14,
+              top: controlledText.bottom + 5, maxWidth: sideWidth - 28
+            } ) );
+          }
+        }
+        if ( advancedExplore || !variableMenuOpen ) {
+          const advancedButton = makeButton( advancedExplore ? 'Focused input' : 'Advanced Explore · all inputs', () => {
+            model.advancedExploreProperty.value = !model.advancedExploreProperty.value;
+            variableMenuOpen = false;
+            renderLeft();
+          }, '#EAF5F8', 9 );
+          advancedButton.left = leftX + 14;
+          advancedButton.top = advancedExplore ? panelTop + 72 : panelTop + 199;
+          advancedButton.enabled = !model.trialLockedProperty.value;
+          leftContent.addChild( advancedButton );
+        }
+        const runButton = makeButton( model.trialLockedProperty.value ? 'NEW TRIAL' : 'RUN EXPERIMENT', () => {
+          if ( model.trialLockedProperty.value ) {
+            model.startTrial();
+            trialPanelPage = 'design';
+            model.rightPanelProperty.value = 'notebook';
+            renderLeft();
+          }
+          else {
+            runCurrentTrial();
+            renderLeft();
+          }
+        }, model.trialLockedProperty.value ? '#BCEACB' : '#FFE8A3', 12 );
+        runButton.left = advancedExplore ? leftX + sideWidth - 140 : leftX + 14;
+        if ( advancedExplore ) {
+          runButton.top = panelTop + 72;
+        }
+        else {
+          runButton.bottom = panelTop + panelHeight - 8;
+        }
         leftContent.addChild( runButton );
+        const healthyButton = advancedExplore ? null : makeButton( 'RESET TO HEALTHY CELL', () => {
+          model.resetToHealthyCell();
+          trialPanelPage = 'design';
+          renderLeft();
+        }, '#D7F0DE', 9 );
+        if ( healthyButton ) {
+          healthyButton.left = leftX + 14;
+          healthyButton.bottom = runButton.top - 7;
+          leftContent.addChild( healthyButton );
+        }
+        if ( model.trialLockedProperty.value && !advancedExplore ) {
+          leftContent.addChild( new Text( 'Inputs locked for this saved trial. Start a new trial to change the test.', {
+            font: readableBoldFont( 9 ), fill: '#8A4B21', left: leftX + 14,
+            bottom: healthyButton ? healthyButton.top - 7 : runButton.top - 7, maxWidth: sideWidth - 28
+          } ) );
+        }
         renderSliders( mode );
         return;
       }
@@ -643,23 +747,31 @@ class AnimalCellScreenView extends ScreenView {
       sliderUnlinks.forEach( unlink => unlink() );
       sliderUnlinks = [];
       sliderRoot.removeAllChildren();
+      if ( mode === 'explore' && variableMenuOpen ) {
+        return;
+      }
       if ( mode === 'learn' || ( ( mode === 'whatif' || mode === 'challenge' || mode === 'explore' ) && model.experimentPanelProperty.value !== 'controls' ) ) {
         return;
       }
       const exploreKeys = [ 'oxygen', 'glucose', 'water', 'ph', 'temperature', 'mitochondria', 'ribosomes', 'golgi', 'lysosomes', 'permeability' ];
-      const definitions = mode === 'explore' ? exploreKeys.map( key => AnimalCellModel.VARIABLE_DEFINITIONS.find( item => item.key === key ) ) : model.getDefinitions( model.controlGroupProperty.value );
+      const definitions = mode === 'explore' ?
+                          ( model.advancedExploreProperty.value ? exploreKeys.map( key => AnimalCellModel.VARIABLE_DEFINITIONS.find( item => item.key === key ) ) : [ AnimalCellModel.VARIABLE_DEFINITIONS.find( item => item.key === model.selectedVariableProperty.value ) ] ) :
+                          model.getDefinitions( model.controlGroupProperty.value );
       const allowed = new Set( model.enabledVariablesProperty.value );
       const visibleDefinitions = definitions.filter( definition => allowed.has( definition.key ) );
-      const startY = mode === 'explore' ? panelTop + 84 : panelTop + 190;
-      const rowHeight = mode === 'explore' ? ( panelTop + panelHeight - startY - 48 ) / Math.max( visibleDefinitions.length, 1 ) : Math.min( 60, ( panelTop + panelHeight - startY - 8 ) / Math.max( visibleDefinitions.length, 1 ) );
+      const advancedExplore = mode === 'explore' && model.advancedExploreProperty.value;
+      const startY = mode === 'explore' ? ( advancedExplore ? panelTop + 120 : panelTop + 265 ) : panelTop + 190;
+      const rowHeight = mode === 'explore' ?
+                       ( panelTop + panelHeight - startY - ( advancedExplore ? 8 : 92 ) ) / Math.max( visibleDefinitions.length, 1 ) :
+                       Math.min( 60, ( panelTop + panelHeight - startY - 8 ) / Math.max( visibleDefinitions.length, 1 ) );
       visibleDefinitions.forEach( ( definition, index ) => {
         const y = startY + index * rowHeight;
         const label = new Text( definition.label, {
-          font: readableFont( mode === 'explore' ? 9 : 10 ), fill: '#183A4B', left: leftX + 12, top: y,
+          font: readableBoldFont( mode === 'explore' ? 10 : 11 ), fill: '#183A4B', left: leftX + 12, top: y,
           maxWidth: sideWidth - 65
         } );
         const value = new Text( '', {
-          font: readableBoldFont( 10 ), fill: '#125F7B',
+          font: readableBoldFont( mode === 'explore' ? 19 : 17 ), fill: '#125F7B',
           right: leftX + sideWidth - 12, top: y
         } );
         const property = model.variables[ definition.key ];
@@ -667,16 +779,22 @@ class AnimalCellScreenView extends ScreenView {
         const updateValue = current => {
           value.string = current + '%';
           model.selectedVariableProperty.value = definition.key;
+          if ( mode === 'explore' ) {
+            model.triggerFocusEffect( definition.key );
+          }
         };
         property.lazyLink( updateValue );
         sliderUnlinks.push( () => property.unlink( updateValue ) );
         const slider = new HSlider( property, new Range( 0, 100 ), {
           trackSize: new Dimension2( sideWidth - 68, 4 ),
-          thumbSize: new Dimension2( 16, mode === 'explore' ? 14 : 24 ),
+          thumbSize: new Dimension2( 18, mode === 'explore' ? 16 : 24 ),
           constrainValue: input => roundSymmetric( input / 5 ) * 5
         } );
         slider.left = leftX + 12;
-        slider.top = mode === 'explore' ? y + 18 : label.bottom + 3;
+        slider.top = mode === 'explore' ? y + ( advancedExplore ? 20 : 21 ) : label.bottom + 3;
+        if ( mode === 'explore' && model.trialLockedProperty.value ) {
+          slider.pickable = false;
+        }
         if ( mode !== 'explore' ) {
           sliderRoot.addChild( new Text( 'Affects: ' + definition.output, {
             font: readableFont( 8 ), fill: '#526A73', left: leftX + 12,
@@ -714,19 +832,19 @@ class AnimalCellScreenView extends ScreenView {
           left: rightX + 13, top: tabRow.bottom + 8
         } ) );
         METRICS.forEach( ( metric, index ) => {
-          const y = tabRow.bottom + 36 + index * 34;
+          const y = tabRow.bottom + 36 + index * 40;
           const label = new Text( metric[ 0 ], {
             font: readableFont( 9 ), fill: '#294957', left: rightX + 13, top: y, maxWidth: sideWidth - 88
           } );
           const number = new Text( '', {
-            font: readableBoldFont( 10 ), fill: '#173A4A',
+            font: readableBoldFont( 19 ), fill: '#173A4A',
             right: rightX + sideWidth - 12, top: y
           } );
           const back = new Rectangle( 0, 0, sideWidth - 26, 8, 4, 4, {
-            fill: '#E2EAED', left: rightX + 13, top: y + 20
+            fill: '#E2EAED', left: rightX + 13, top: y + 25
           } );
           const bar = new Rectangle( 0, 0, 1, 8, 4, 4, {
-            fill: metric[ 2 ], left: rightX + 13, top: y + 20
+            fill: metric[ 2 ], left: rightX + 13, top: y + 25
           } );
           const property = metricProperty( model, metric[ 1 ] );
           const updateMetric = current => {
@@ -858,21 +976,39 @@ class AnimalCellScreenView extends ScreenView {
         }
         else {
         const recentTrials = model.trialsProperty.value.slice( -5 );
+        const trialPageCount = Math.max( 1, Math.ceil( recentTrials.length / 3 ) );
+        trialPage = Math.min( trialPage, trialPageCount - 1 );
         const note = new Text( 'Select two trials to compare. Five recent trials are shown.', {
           font: readableFont( 9 ), fill: '#294957', maxWidth: sideWidth - 26,
           left: rightX + 13, top: tabRow.bottom + 34
         } );
         rightContent.addChild( note );
-        let y = note.bottom + 5;
-        const tableHeader = new Text( 'TRIAL / INPUT       ATP · P · W · HEALTH', {
-          font: readableBoldFont( 8 ), fill: '#125F7B', left: rightX + 13, top: y
+        const pageButton = makeButton( 'Saved trials page ' + ( trialPage + 1 ) + ' of ' + trialPageCount + ' · More', () => {
+          trialPage = ( trialPage + 1 ) % trialPageCount;
+          renderRight();
+        }, '#EAF5F8', 9 );
+        pageButton.left = rightX + 13;
+        pageButton.top = note.bottom + 4;
+        rightContent.addChild( pageButton );
+        let y = pageButton.bottom + 3;
+        const tableHeader = new Text( 'INPUT AND LIVE OUTPUTS · BEFORE → AFTER', {
+          font: readableBoldFont( 17 ), fill: '#125F7B', left: rightX + 13, top: y,
+          maxWidth: sideWidth - 26
         } );
         rightContent.addChild( tableHeader );
         y = tableHeader.bottom + 3;
-        recentTrials.forEach( trial => {
+        recentTrials.slice( trialPage * 3, trialPage * 3 + 3 ).forEach( trial => {
           const selected = model.selectedTrialsProperty.value.includes( trial.number );
-          const row = new Text( ( selected ? '☑ ' : '□ ' ) + '#' + trial.number + ' · ' + trial.independentVariable + ' ' + trial.value + '%\n' + roundSymmetric( trial.atp ) + ' · ' + roundSymmetric( trial.protein ) + ' · ' + roundSymmetric( trial.waste ) + ' · ' + roundSymmetric( trial.cellHealth ), {
-            font: readableFont( 8 ), fill: selected ? '#125F7B' : '#294957', maxWidth: sideWidth - 26,
+          const beforeSettings = trial.beforeSettings || {};
+          const beforeOutputs = trial.beforeOutputs || {};
+          const inputBefore = beforeSettings[ trial.independentVariableKey ];
+          const inputChange = inputBefore === undefined ? trial.value + '%' : inputBefore + '→' + trial.value + '%';
+          const row = new Text( ( selected ? '☑ ' : '□ ' ) + '#' + trial.number + ' · ' + trial.independentVariable + ' ' + inputChange +
+                               '\nATP ' + roundSymmetric( beforeOutputs.atp === undefined ? trial.atp : beforeOutputs.atp ) + '→' + roundSymmetric( trial.atp ) +
+                               '   Health ' + roundSymmetric( beforeOutputs.health === undefined ? trial.cellHealth : beforeOutputs.health ) + '→' + roundSymmetric( trial.cellHealth ) +
+                               '\nProtein ' + roundSymmetric( beforeOutputs.protein === undefined ? trial.protein : beforeOutputs.protein ) + '→' + roundSymmetric( trial.protein ) +
+                               '   Waste ' + roundSymmetric( beforeOutputs.waste === undefined ? trial.waste : beforeOutputs.waste ) + '→' + roundSymmetric( trial.waste ), {
+            font: readableBoldFont( 8 ), fill: selected ? '#125F7B' : '#294957', maxWidth: sideWidth - 26,
             left: rightX + 13, top: y, cursor: 'pointer'
           } );
           row.addInputListener( new FireListener( { fire: () => {
@@ -880,7 +1016,7 @@ class AnimalCellScreenView extends ScreenView {
             model.selectedTrialsProperty.value = selected ? selectedNumbers.filter( number => number !== trial.number ) : [ ...selectedNumbers, trial.number ].slice( -2 );
           } } ) );
           rightContent.addChild( row );
-          y = row.bottom + 2;
+          y = row.bottom + 8;
         } );
         const selectedTrials = model.selectedTrialsProperty.value.map( number => model.trialsProperty.value.find( trial => trial.number === number ) ).filter( Boolean );
         if ( selectedTrials.length ) {
@@ -995,18 +1131,27 @@ class AnimalCellScreenView extends ScreenView {
       root.addChild( complexityButton );
     };
 
+    const updateOrganelleOutlines = () => {
+      Object.keys( organelleShapes ).forEach( orgKey => {
+        const focused = model.focusEffectKeyProperty.value === orgKey;
+        const selected = model.selectedOrganelleProperty.value === orgKey;
+        organelleShapes[ orgKey ].forEach( shape => {
+          shape.lineWidth = focused ? 4 : selected ? 3 : 1.5;
+          shape.stroke = focused ? '#E28C00' : selected ? '#102D3A' : '#34505C';
+        } );
+      } );
+      const membraneFocused = model.focusEffectKeyProperty.value === 'membrane';
+      membrane.lineWidth = membraneFocused ? 15 : 8 + model.stressProperty.value * 0.055;
+      membrane.stroke = membraneFocused ? '#E28C00' : mixColor( '#54BFD7', '#CF5C4C', model.stressProperty.value / 100 );
+    };
     model.controlGroupProperty.link( () => renderLeft() );
     model.modeProperty.link( () => renderLeft() );
     model.rightPanelProperty.link( () => renderRight() );
-    model.selectedOrganelleProperty.link( key => {
-      Object.keys( organelleShapes ).forEach( orgKey => {
-        organelleShapes[ orgKey ].forEach( shape => {
-          shape.lineWidth = orgKey === key ? 3 : 1.5;
-          shape.stroke = orgKey === key ? '#102D3A' : '#34505C';
-        } );
-      } );
+    model.selectedOrganelleProperty.link( () => {
+      updateOrganelleOutlines();
       renderRight();
     } );
+    model.focusEffectKeyProperty.link( updateOrganelleOutlines );
     model.enabledVariablesProperty.link( () => renderLeft() );
     model.enabledOrganellesProperty.link( enabled => {
       Object.keys( INFO ).forEach( key => {
@@ -1048,16 +1193,18 @@ class AnimalCellScreenView extends ScreenView {
 
     // Visual properties respond to model outputs; the circles are schematic, not to scale.
     model.volumeProperty.link( volume => {
-      const scaleFactor = 0.91 + volume * 0.0012;
+      const scaleFactor = 0.82 + volume * 0.0024;
       membrane.scaleX = scaleFactor;
       membrane.scaleY = scaleFactor * 0.82;
       cytoplasm.scaleX = scaleFactor * 0.9;
       cytoplasm.scaleY = scaleFactor * 0.74;
     } );
     model.healthProperty.link( health => {
-      membrane.stroke = health < 45 ? '#D84E58' : health < 68 ? '#E5A03A' : '#54BFD7';
-      membrane.lineWidth = health < 45 ? 15 : 10;
+      cytoplasm.fill = mixColor( '#E9FBFF', '#A8BAC8', ( 100 - health ) / 145 );
+      membrane.fill = mixColor( '#A6EAF7', '#E9B4A8', ( 100 - health ) / 150 );
+      updateOrganelleOutlines();
     } );
+    model.stressProperty.link( () => updateOrganelleOutlines() );
     const organelleFunctions = {
       mitochondria: 'mitochondria', ribosomes: 'ribosomes', roughER: 'roughER',
       golgi: 'golgi', lysosome: 'lysosomes', nucleolus: 'nucleusSignal', nucleus: 'nucleusSignal',
@@ -1070,42 +1217,52 @@ class AnimalCellScreenView extends ScreenView {
     } );
     model.atpProperty.link( atp => {
       organelleNodes.mitochondria.scale = 0.88 + atp / 400;
+      mitochondriaGlowNode.opacity = Math.min( 0.95, 0.12 + atp * 0.008 + model.variables.mitochondria.value * 0.002 );
       energyParticles.forEach( ( particle, index ) => {
-        particle.opacity = Math.min( 1, 0.2 + atp / 125 );
-        particle.visible = atp > index * 28;
+        particle.opacity = Math.max( 0.08, Math.min( 1, atp / 100 - index * 0.055 ) );
+        particle.visible = atp > 0.5;
       } );
     } );
     model.proteinProperty.link( protein => {
       organelleNodes.ribosomes.scale = 0.86 + protein / 360;
       proteinParticles.forEach( ( particle, index ) => {
-        particle.opacity = Math.min( 1, 0.18 + protein / 120 );
-        particle.visible = protein > index * 28;
+        particle.opacity = Math.max( 0.08, Math.min( 1, protein / 100 - index * 0.09 ) );
+        particle.visible = protein > 0.5;
       } );
     } );
     model.wasteProperty.link( waste => {
-      wasteParticles.forEach( particle => { particle.opacity = Math.min( 1, 0.18 + waste / 115 ); } );
+      wasteParticles.forEach( particle => { particle.opacity = Math.max( 0.12, Math.min( 1, waste / 80 ) ); } );
       wasteBuildup.forEach( ( particle, index ) => {
-        particle.visible = waste > 30 + index * 10;
+        particle.opacity = Math.max( 0.02, Math.min( 0.92, ( waste - index * 8 ) / 58 ) );
       } );
     } );
     model.transportProperty.link( transport => {
       organelleNodes.vesicles.opacity = Math.min( 1, 0.25 + transport / 130 );
       membraneParticles.forEach( ( particle, index ) => {
-        particle.opacity = Math.min( 1, 0.2 + transport / 125 );
-        particle.visible = transport > index * 26;
+        particle.opacity = Math.max( 0.08, Math.min( 1, transport / 100 - index * 0.09 ) );
+        particle.visible = transport > 0.5;
       } );
     } );
     model.golgiBacklogProperty.link( backlog => {
       golgiBacklogParticles.forEach( ( particle, index ) => {
-        particle.visible = backlog > index * 14 + 8;
+        particle.opacity = Math.max( 0.02, Math.min( 1, ( backlog + 12 - index * 8 ) / 55 ) );
       } );
     } );
     model.flowPhaseProperty.link( phase => {
+      energyParticles.forEach( ( particle, index ) => {
+        const energyTargets = [ [ -150, 28 ], [ 50, 24 ], [ 149, 66 ] ];
+        const t = ( phase + index / energyParticles.length ) % 1;
+        const target = energyTargets[ index % energyTargets.length ];
+        particle.centerX = -132 + ( target[ 0 ] + 132 ) * t;
+        particle.centerY = -70 + ( target[ 1 ] + 70 ) * t;
+      } );
+      organelleNodes.mitochondria.scale = 0.88 + model.atpProperty.value / 400 + Math.sin( phase * Math.PI * 2 ) * model.variables.mitochondria.value / 1800;
+    } );
+    model.proteinFlowPhaseProperty.link( phase => {
       const proteinPath = [ [ -150, 28 ], [ -87, 89 ], [ 97, -63 ], [ 149, 66 ], [ 185, 4 ] ];
-      const golgiFunction = model.variables.golgi.value;
       proteinParticles.forEach( ( particle, index ) => {
         let t = ( phase + index / proteinParticles.length ) % 1;
-        if ( golgiFunction < 95 && t > 0.47 ) {
+        if ( model.variables.golgi.value < 95 && t > 0.47 ) {
           t = 0.47;
         }
         const pathPosition = t * ( proteinPath.length - 1 );
@@ -1114,24 +1271,20 @@ class AnimalCellScreenView extends ScreenView {
         particle.centerX = proteinPath[ segment ][ 0 ] + ( proteinPath[ segment + 1 ][ 0 ] - proteinPath[ segment ][ 0 ] ) * segmentProgress;
         particle.centerY = proteinPath[ segment ][ 1 ] + ( proteinPath[ segment + 1 ][ 1 ] - proteinPath[ segment ][ 1 ] ) * segmentProgress;
       } );
-      energyParticles.forEach( ( particle, index ) => {
-        const energyTargets = [ [ -150, 28 ], [ 50, 24 ], [ 149, 66 ] ];
-        const t = ( phase + index / energyParticles.length ) % 1;
-        const target = energyTargets[ index ];
-        particle.centerX = -132 + ( target[ 0 ] + 132 ) * t;
-        particle.centerY = -70 + ( target[ 1 ] + 70 ) * t;
-      } );
+    } );
+    model.wasteFlowPhaseProperty.link( phase => {
       wasteParticles.forEach( ( particle, index ) => {
         const t = ( phase + index / wasteParticles.length ) % 1;
         particle.centerX = 138 - t * 52;
-        particle.centerY = 75 + t * 25;
+        particle.centerY = 75 + t * 28;
       } );
+    } );
+    model.transportFlowPhaseProperty.link( phase => {
       membraneParticles.forEach( ( particle, index ) => {
-        const t = ( phase * 2 + index / membraneParticles.length ) % 1;
+        const t = ( phase + index / membraneParticles.length ) % 1;
         particle.centerX = -174 + t * 348;
         particle.centerY = 4 + Math.sin( t * Math.PI * 2 ) * 72;
       } );
-      organelleNodes.mitochondria.scale = 0.88 + model.atpProperty.value / 400 + Math.sin( phase * Math.PI * 2 ) * model.variables.mitochondria.value / 1800;
     } );
 
     this.addChild( new Text( 'Simplified model: relative indicators show selected relationships, not real cell measurements.', {
