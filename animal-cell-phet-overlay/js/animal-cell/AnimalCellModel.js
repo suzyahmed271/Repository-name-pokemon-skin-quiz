@@ -55,7 +55,7 @@ class AnimalCellModel {
     this.selectedScenarioProperty = new Property( SCENARIOS[ 0 ] );
     this.predictionProperty = new Property( null );
     this.feedbackProperty = new Property( 'Make a prediction, then run the test.' );
-    this.observationChoiceProperty = new Property( 'The measured output changed after the test.' );
+    this.observationChoiceProperty = new Property( 'The output changed.' );
     this.cerClaimProperty = new Property( 'The condition I changed affected the cell system.' );
     this.cerEvidenceProperty = new Property( 'Use the before-and-after values as evidence.' );
     this.cerReasoningProperty = new Property( 'The changed process is connected to the output I measured.' );
@@ -65,6 +65,7 @@ class AnimalCellModel {
     this.trialLockedProperty = new Property( false );
     this.advancedExploreProperty = new Property( false );
     this.challengeProperty = new Property( null );
+    this.rescueCaseIndex = 0;
     this.challengeFeedbackProperty = new Property( 'Inspect the live evidence and test a possible cause.' );
     this.hintsEnabledProperty = new Property( true );
     this.teacherModeProperty = new Property( false );
@@ -158,14 +159,13 @@ class AnimalCellModel {
   /** @public */
   cycleObservation() {
     const observations = [
-      'The measured output changed after the test.',
-      'A direct effect appeared before a downstream effect.',
-      'The result did not match my first prediction.',
-      'I changed one variable and held the others steady.'
+      'The output changed.',
+      'The direct effect came first.',
+      'The result surprised me.',
+      'Other inputs stayed fixed.'
     ];
     const index = observations.indexOf( this.observationChoiceProperty.value );
     this.observationChoiceProperty.value = observations[ ( index + 1 ) % observations.length ];
-    this.updateLatestTrial( 'observation', this.observationChoiceProperty.value );
   }
 
   /** @public */
@@ -203,10 +203,7 @@ class AnimalCellModel {
     const scenario = SCENARIOS.find( item => item.id === scenarioId ) || SCENARIOS[ 0 ];
     this.selectedScenarioProperty.value = scenario;
     this.selectedVariableProperty.value = scenario.variable;
-    Object.values( this.variables ).forEach( ( property, index ) => {
-      property.value = VARIABLE_DEFINITIONS[ index ].value;
-    } );
-    this.challengeProperty.value = null;
+    this.resetToHealthyCell();
     this.experimentPanelProperty.value = 'question';
     this.startTrial();
   }
@@ -221,7 +218,6 @@ class AnimalCellModel {
     if ( scenario.secondVariable ) {
       this.variables[ scenario.secondVariable ].value = scenario.secondValue;
     }
-    this.comparePrediction( scenario.output );
   }
 
   /** @public */
@@ -242,7 +238,7 @@ class AnimalCellModel {
     const difference = after[ outputKey ] - before[ outputKey ];
     const actual = Math.abs( difference ) < 2 ? 'stay about the same' : difference > 0 ? 'increase' : 'decrease';
     const isCorrect = prediction === actual || ( prediction === 'stay the same' && actual === 'stay about the same' );
-    this.feedbackProperty.value = 'The output ' + actual + '. ' + ( isCorrect ? 'Your prediction matches the result.' : 'Compare the change with your prediction and revise your explanation.' );
+    this.feedbackProperty.value = 'Result: ' + actual + '. ' + ( isCorrect ? 'Prediction matches.' : 'Prediction differs; use the data.' );
     if ( isCorrect ) {
       this.correctPredictionStreak++;
       this.struggleCount = 0;
@@ -252,6 +248,8 @@ class AnimalCellModel {
       this.correctPredictionStreak = 0;
     }
     this.updateAdaptiveSupport();
+    const hint = this.hintsEnabledProperty.value && this.struggleCount >= 2 ? ' Hint: check the direct process first.' : '';
+    this.feedbackProperty.value += hint;
   }
 
   /** @public */
@@ -323,18 +321,18 @@ class AnimalCellModel {
   /** Start a deterministic but hidden diagnosis case. @public */
   startRescueChallenge() {
     const cases = [
-      { id: 'energy', variable: 'mitochondria', outputKey: 'atp', value: 12, clue: 'Usable energy is low even though fuel is available.' },
-      { id: 'waste', variable: 'lysosomes', outputKey: 'waste', value: 12, clue: 'Waste is building up faster than the cell can recycle it.' },
-      { id: 'export', variable: 'golgi', outputKey: 'export', value: 12, clue: 'Proteins are made, but delivery out of the cell is poor.' },
-      { id: 'transport', variable: 'permeability', outputKey: 'balance', value: 96, clue: 'Internal balance is unstable and the membrane is unusually open.' },
-      { id: 'instructions', variable: 'nucleusSignal', outputKey: 'protein', value: 12, clue: 'Protein output is low although ribosome function is available.' }
+      { id: 'energy', mission: 'ENERGY CRISIS', variable: 'mitochondria', candidates: [ 'mitochondria', 'lysosomes', 'golgi', 'permeability' ], outputKey: 'atp', value: 12, clue: 'Usable energy is low even though oxygen and glucose are available.', target: 'ATP above 80% and cell health above 80%' },
+      { id: 'waste', mission: 'WASTE CRISIS', variable: 'lysosomes', candidates: [ 'lysosomes', 'golgi', 'mitochondria', 'permeability' ], outputKey: 'waste', value: 12, clue: 'Waste is building up faster than the cell can recycle it.', target: 'Waste below 25% and cell health above 80%' },
+      { id: 'protein', mission: 'PROTEIN FACTORY FAILURE', variable: 'ribosomes', candidates: [ 'ribosomes', 'roughER', 'golgi', 'mitochondria' ], outputKey: 'protein', value: 12, clue: 'Protein output is low, slowing the cell’s ability to make needed materials.', target: 'Protein production above 70% and cell health above 80%' },
+      { id: 'export', mission: 'SHIPPING FAILURE', variable: 'golgi', candidates: [ 'golgi', 'roughER', 'ribosomes', 'permeability' ], outputKey: 'export', value: 12, clue: 'Proteins are made, but delivery out of the cell is poor.', target: 'Protein export above 70% and cell health above 80%' },
+      { id: 'water', mission: 'WATER BALANCE EMERGENCY', variable: 'water', candidates: [ 'water', 'permeability', 'lysosomes', 'mitochondria' ], outputKey: 'volume', value: 95, clue: 'The cell is swelling because outside water is far from balanced.', target: 'Cell volume between 60–90% and cell health above 80%' }
     ];
-    const next = cases[ this.trialsProperty.value.length % cases.length ];
+    const next = cases[ this.rescueCaseIndex % cases.length ];
     Object.values( this.variables ).forEach( ( property, index ) => {
       property.value = VARIABLE_DEFINITIONS[ index ].value;
     } );
     this.variables[ next.variable ].value = next.value;
-    this.selectedVariableProperty.value = next.variable;
+    this.selectedVariableProperty.value = null;
     this.challengeProperty.value = next;
     this.challengeFeedbackProperty.value = 'Use the clue and live data to decide what to test. The cause is not revealed.';
     this.startTrial();
@@ -350,13 +348,25 @@ class AnimalCellModel {
       return;
     }
     const suspectedValue = this.variables[ challenge.variable ].value;
-    const restored = challenge.variable === 'permeability' ? suspectedValue < 60 : suspectedValue > 60;
-    if ( restored && this.healthProperty.value >= 65 ) {
-      this.challengeFeedbackProperty.value = 'The cell is back in its healthy range. Explain which data supported your diagnosis.';
+    const restored = challenge.variable === 'water' ? suspectedValue >= 35 && suspectedValue <= 65 : suspectedValue >= 65;
+    const targetReached = challenge.id === 'energy' ? this.atpProperty.value >= 80 && this.healthProperty.value >= 80 :
+                          challenge.id === 'waste' ? this.wasteProperty.value < 25 && this.healthProperty.value >= 80 :
+                          challenge.id === 'protein' ? this.proteinProperty.value >= 70 && this.healthProperty.value >= 80 :
+                          challenge.id === 'export' ? this.exportProperty.value >= 70 && this.healthProperty.value >= 80 :
+                          this.volumeProperty.value >= 60 && this.volumeProperty.value <= 90 && this.healthProperty.value >= 80;
+    if ( restored && targetReached ) {
+      const causeLabel = VARIABLE_DEFINITIONS.find( definition => definition.key === challenge.variable ).label;
+      this.challengeFeedbackProperty.value = 'CELL RESCUED — ' + causeLabel + ' was the cause. Explain the evidence.';
       this.recordTrial();
+      this.trialLockedProperty.value = true;
+      this.rescueCaseIndex++;
     }
     else {
-      this.challengeFeedbackProperty.value = 'Not rescued yet. Inspect the data, choose a possible cause, adjust its control, and test again.';
+      this.struggleCount++;
+      this.updateAdaptiveSupport();
+      const hint = this.hintsEnabledProperty.value && this.struggleCount >= 2 ? ' Hint: check the first process linked to this output.' : '';
+      this.challengeFeedbackProperty.value = restored ? 'Repair underway. Wait for the cell data to respond, then test again.' + hint :
+                                                'Not rescued yet. Compare evidence and try one cause at a time.' + hint;
     }
   }
 
@@ -443,10 +453,25 @@ class AnimalCellModel {
     this.historyProperty.value = [ ...this.historyProperty.value, sample ].slice( -60 );
   }
 
-  /** Restore the classroom healthy baseline; dependent indicators recover through step(). @public */
+  /** Restore the complete classroom healthy baseline. @public */
   resetToHealthyCell() {
     this.resetCell();
-    this.feedbackProperty.value = 'Healthy baseline restored. Watch the cell recover over time.';
+    this.updateOutputs();
+    this.atpProperty.value = this.targets.atp;
+    this.proteinProperty.value = this.targets.protein;
+    this.wasteProperty.value = this.targets.waste;
+    this.volumeProperty.value = this.targets.volume;
+    this.balanceProperty.value = this.targets.balance;
+    this.healthProperty.value = this.targets.health;
+    this.exportProperty.value = this.targets.export;
+    this.transportProperty.value = this.targets.transport;
+    this.stressProperty.value = this.targets.stress;
+    this.golgiBacklogProperty.value = this.targets.golgiBacklog;
+    this.historyTime = 0;
+    this.historyElapsed = 0;
+    this.historyProperty.value = [];
+    this.recordHistorySample();
+    this.feedbackProperty.value = 'Healthy baseline restored. All inputs, outputs, and visual activity are reset.';
   }
 
   /** @public */
@@ -459,6 +484,14 @@ class AnimalCellModel {
     this.trialStartSettingsProperty.value = Object.fromEntries( Object.entries( this.variables ).map( ( [ key, property ] ) => [ key, property.value ] ) );
     this.trialLockedProperty.value = false;
     this.challengeProperty.value = null;
+    this.pathwayHighlightProperty.value = null;
+    this.focusEffectKeyProperty.value = null;
+    this.focusEffectTime = 0;
+    this.flowPhaseProperty.value = 0;
+    this.proteinFlowPhaseProperty.value = 0;
+    this.wasteFlowPhaseProperty.value = 0;
+    this.transportFlowPhaseProperty.value = 0;
+    this.golgiBacklogProperty.value = 0;
     this.feedbackProperty.value = 'Baseline restored. Start a new fair test.';
   }
 
@@ -474,6 +507,7 @@ class AnimalCellModel {
     this.experimentPanelProperty.value = 'question';
     this.rightPanelProperty.value = 'data';
     this.teacherModeProperty.value = false;
+    this.rescueCaseIndex = 0;
     this.teacherListProperty.value = 'variables';
     this.hintsEnabledProperty.value = true;
     this.challengeComplexityProperty.value = 'Guided';
@@ -484,14 +518,9 @@ class AnimalCellModel {
     this.correctPredictionStreak = 0;
     this.struggleCount = 0;
     this.clearTrials();
-    this.resetCell();
-    this.flowPhaseProperty.value = 0;
-    this.proteinFlowPhaseProperty.value = 0;
-    this.wasteFlowPhaseProperty.value = 0;
-    this.transportFlowPhaseProperty.value = 0;
-    this.historyTime = 0;
-    this.historyElapsed = 0;
+    this.resetToHealthyCell();
     this.historyProperty.value = [];
+    this.recordHistorySample();
     this.selectedTrialsProperty.value = [];
   }
 }
