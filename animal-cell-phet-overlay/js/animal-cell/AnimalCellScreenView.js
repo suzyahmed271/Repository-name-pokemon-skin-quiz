@@ -1439,7 +1439,7 @@ class AnimalCellScreenView extends ScreenView {
           const beforeHealth = beforeOutputs.health === undefined ? trial.cellHealth : beforeOutputs.health;
           const row = new Text( ( selected ? '☑ ' : '□ ' ) + 'TRIAL ' + trial.number + ' · ' + conciseVariableName( trial.independentVariableKey ) +
                                '\nInput: ' + inputSummary +
-                               '\n' + outputName + ': ' + roundSymmetric( beforeResult ) + ' → ' + roundSymmetric( afterResult ) + '%'+
+                               '\n' + outputName + ': ' + roundSymmetric( beforeResult ) + ' → ' + roundSymmetric( afterResult ) + '%' +
                                '\nHealth: ' + roundSymmetric( beforeHealth ) + ' → ' + roundSymmetric( trial.cellHealth ) + '%' +
                                '\nObservation: ' + trial.observation, {
             font: readableFont( 8 ), fill: selected ? '#125F7B' : '#294957', maxWidth: sideWidth - 30,
