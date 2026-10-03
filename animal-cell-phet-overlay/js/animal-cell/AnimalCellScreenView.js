@@ -8,6 +8,7 @@
 
 import Dimension2 from '../../../dot/js/Dimension2.js';
 import Range from '../../../dot/js/Range.js';
+import { roundSymmetric } from '../../../dot/js/util/roundSymmetric.js';
 import ScreenView from '../../../joist/js/ScreenView.js';
 import ResetAllButton from '../../../scenery-phet/js/buttons/ResetAllButton.js';
 import PhetFont from '../../../scenery-phet/js/PhetFont.js';
@@ -16,7 +17,6 @@ import Node from '../../../scenery/js/nodes/Node.js';
 import Rectangle from '../../../scenery/js/nodes/Rectangle.js';
 import Text from '../../../scenery/js/nodes/Text.js';
 import HBox from '../../../scenery/js/layout/nodes/HBox.js';
-import VBox from '../../../scenery/js/layout/nodes/VBox.js';
 import FireListener from '../../../scenery/js/listeners/FireListener.js';
 import HSlider from '../../../sun/js/HSlider.js';
 import RectangularPushButton from '../../../sun/js/buttons/RectangularPushButton.js';
@@ -537,7 +537,7 @@ class AnimalCellScreenView extends ScreenView {
         const slider = new HSlider( property, new Range( 0, 100 ), {
           trackSize: new Dimension2( sideWidth - 54, 4 ),
           thumbSize: new Dimension2( 14, 22 ),
-          constrainValue: input => Math.round( input / 5 ) * 5
+          constrainValue: input => roundSymmetric( input / 5 ) * 5
         } );
         slider.left = leftX + 12;
         slider.top = label.bottom + 3;

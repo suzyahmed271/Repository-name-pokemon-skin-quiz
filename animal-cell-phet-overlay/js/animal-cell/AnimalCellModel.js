@@ -10,8 +10,9 @@
 import NumberProperty from '../../../axon/js/NumberProperty.js';
 import Property from '../../../axon/js/Property.js';
 import Range from '../../../dot/js/Range.js';
+import { roundSymmetric } from '../../../dot/js/util/roundSymmetric.js';
 
-const clamp = value => Math.max( 0, Math.min( 100, Math.round( value ) ) );
+const clamp = value => Math.max( 0, Math.min( 100, roundSymmetric( value ) ) );
 
 const VARIABLE_DEFINITIONS = [
   { key: 'oxygen', label: 'Oxygen availability', group: 'environment', value: 80, output: 'ATP / energy', outputKey: 'atp', visible: 'Energy particles slow when oxygen is limited.' },
