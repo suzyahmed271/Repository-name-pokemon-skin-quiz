@@ -6,12 +6,12 @@
  * @author Suzan Ahmed Mustafa
  */
 
-import StringProperty from '../../axon/js/StringProperty.js';
 import Sim from '../../joist/js/Sim.js';
 import simLauncher from '../../joist/js/simLauncher.js';
+import GeneExpressionEssentialsStrings from './GeneExpressionEssentialsStrings.js';
 import AnimalCellScreen from './animal-cell/AnimalCellScreen.js';
 
-const titleProperty = new StringProperty( 'Animal Cell Systems Lab' );
+const titleProperty = GeneExpressionEssentialsStrings[ 'gene-expression-essentials' ].titleStringProperty;
 
 const simOptions = {
   credits: {
