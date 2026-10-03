@@ -782,7 +782,14 @@ class AnimalCellScreenView extends ScreenView {
             if ( points.length === 1 ) {
               points.unshift( new Vector2( graphLeft, points[ 0 ].y ) );
             }
-            trace.shape = points.length > 1 ? Shape.polyline( points ) : new Shape();
+            const graphShape = new Shape();
+            if ( points.length > 1 ) {
+              graphShape.moveToPoint( points[ 0 ] );
+              points.slice( 1 ).forEach( point => {
+                graphShape.lineToPoint( point );
+              } );
+            }
+            trace.shape = graphShape;
           };
           redraw( model.historyProperty.value );
           linkPanelProperty( model.historyProperty, redraw );
