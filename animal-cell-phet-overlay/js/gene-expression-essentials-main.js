@@ -1,3 +1,11 @@
+// Copyright 2016-2026, University of Colorado Boulder
+
+/**
+ * Main entry point for the adapted Animal Cell Systems Lab.
+ *
+ * @author Suzan Ahmed Mustafa
+ */
+
 import StringProperty from '../../axon/js/StringProperty.js';
 import Sim from '../../joist/js/Sim.js';
 import simLauncher from '../../joist/js/simLauncher.js';
