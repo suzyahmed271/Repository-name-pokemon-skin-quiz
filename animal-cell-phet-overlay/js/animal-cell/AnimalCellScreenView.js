@@ -128,14 +128,18 @@ const METRICS = [
   [ 'Protein production', 'protein', '#4A91D3' ],
   [ 'Waste buildup', 'waste', '#D66B5B' ],
   [ 'Relative cell volume', 'volume', '#8A74C7' ],
-  [ 'Internal balance', 'balance', '#39A887' ],
   [ 'Cell health indicator', 'health', '#4DA66B' ],
+  [ 'Oxygen level', 'oxygen', '#4EB5D3' ],
+  [ 'Glucose level', 'glucose', '#D89B3E' ],
   [ 'Protein export', 'export', '#D15A9F' ],
   [ 'Membrane transport', 'transport', '#39AFC2' ],
+  [ 'Internal balance', 'balance', '#39A887' ],
   [ 'Cell stress', 'stress', '#CE6744' ]
 ];
 
-const metricProperty = ( model, key ) => model[ key + 'Property' ];
+const metricProperty = ( model, key ) => model.variables[ key ] || model[ key + 'Property' ];
+const readableFont = size => new PhetFont( Math.max( 12, size * 1.18 ) );
+const readableBoldFont = size => new PhetFont( { size: Math.max( 12, size * 1.18 ), weight: 'bold' } );
 
 class AnimalCellScreenView extends ScreenView {
   constructor( model ) {
@@ -155,7 +159,7 @@ class AnimalCellScreenView extends ScreenView {
     } );
     this.addChild( title );
     this.addChild( new Text( 'Explore a simplified model: change one condition, follow the evidence, explain the result.', {
-      font: new PhetFont( 13 ), fill: '#486C7A', centerX: this.layoutBounds.centerX,
+      font: readableFont( 13 ), fill: '#486C7A', centerX: this.layoutBounds.centerX,
       top: title.bottom + 2, maxWidth: viewWidth - 30
     } ) );
 
@@ -166,7 +170,7 @@ class AnimalCellScreenView extends ScreenView {
       [ 'Rescue the Cell', 'challenge', '#FFE080' ]
     ];
     const modeButtons = modeItems.map( item => new RectangularPushButton( {
-      content: new Text( item[ 0 ], { font: new PhetFont( 14 ) } ),
+      content: new Text( item[ 0 ], { font: readableFont( 14 ) } ),
       baseColor: item[ 2 ], listener: () => {
         model.modeProperty.value = item[ 1 ];
         if ( item[ 1 ] === 'challenge' && !model.challengeProperty.value ) {
@@ -178,8 +182,10 @@ class AnimalCellScreenView extends ScreenView {
           model.rightPanelProperty.value = 'data';
         }
         if ( item[ 1 ] === 'explore' ) {
-          model.experimentPanelProperty.value = 'question';
+          model.experimentPanelProperty.value = 'controls';
+          model.startTrial();
           model.rightPanelProperty.value = 'data';
+          renderLeft();
         }
         if ( item[ 1 ] === 'challenge' ) {
           model.experimentPanelProperty.value = 'question';
@@ -218,34 +224,82 @@ class AnimalCellScreenView extends ScreenView {
     cellRoot.addChild( membrane );
     cellRoot.addChild( cytoplasm );
 
-    // Stylized cytoskeleton tracks make the internal transport system visible.
-    [ [ -100, -15, 205, 3, 0.18 ], [ -83, 54, 184, 3, -0.45 ], [ -44, -104, 152, 3, 0.67 ] ].forEach( item => {
-      const track = new Rectangle( item[ 0 ], item[ 1 ], item[ 2 ], item[ 3 ], {
-        fill: '#82B6C5', opacity: 0.46, rotation: item[ 4 ], pickable: false
-      } );
-      cellRoot.addChild( track );
-    } );
-
     const organelleNodes = {};
     const organelleShapes = {};
     const createOrganelle = key => {
       const data = INFO[ key ];
       const [ x, y ] = data.position;
-      const circle = new Circle( data.radius, {
-        fill: data.color, stroke: '#34505C', lineWidth: 2, cursor: 'pointer'
+      const parts = [];
+      const addPart = part => {
+        parts.push( part );
+        return part;
+      };
+      if ( key === 'mitochondria' ) {
+        addPart( new Rectangle( -39, -20, 78, 40, 20, 20, {
+          fill: data.color, stroke: '#34505C', lineWidth: 2
+        } ) );
+        [ -10, 0, 10 ].forEach( foldY => {
+          addPart( new Rectangle( -18, foldY - 1.5, 36, 3, 1.5, 1.5, {
+            fill: '#AD512F', rotation: foldY / 35
+          } ) );
+        } );
+      }
+      else if ( key === 'golgi' ) {
+        [ -15, -5, 5, 15 ].forEach( ( stackY, index ) => {
+          addPart( new Rectangle( -31 + index % 2 * 4, stackY - 4, 62 - index % 2 * 8, 8, 4, 4, {
+            fill: data.color, stroke: '#8D3568', lineWidth: 1.5
+          } ) );
+        } );
+      }
+      else if ( key === 'roughER' || key === 'smoothER' ) {
+        [ -17, -5, 7, 19 ].forEach( ( tubeY, index ) => {
+          addPart( new Rectangle( -31 + ( index % 2 ) * 7, tubeY, 62 - ( index % 2 ) * 14, 5, 2.5, 2.5, {
+            fill: data.color, stroke: key === 'roughER' ? '#287A91' : '#328A68', lineWidth: 1.5,
+            rotation: index % 2 ? 0.18 : -0.12
+          } ) );
+        } );
+        if ( key === 'roughER' ) {
+          [ -22, -8, 8, 22 ].forEach( dotX => {
+            addPart( new Circle( 2.5, { fill: '#5A4933', centerX: dotX, centerY: -20 } ) );
+            addPart( new Circle( 2.5, { fill: '#5A4933', centerX: dotX, centerY: 27 } ) );
+          } );
+        }
+      }
+      else if ( key === 'ribosomes' ) {
+        addPart( new Circle( data.radius, { fill: data.color, opacity: 0.015, stroke: null } ) );
+        [ [ -15, -11 ], [ 0, -16 ], [ 14, -9 ], [ -20, 4 ], [ -4, 1 ], [ 12, 5 ], [ -12, 17 ], [ 5, 18 ], [ 21, 16 ] ].forEach( point => {
+          addPart( new Circle( 5, { fill: data.color, stroke: '#8E6925', lineWidth: 1, centerX: point[ 0 ], centerY: point[ 1 ] } ) );
+        } );
+      }
+      else if ( key === 'cytoskeleton' ) {
+        [ [ -18, -5, 36, 4, 0.45 ], [ -17, 2, 34, 4, -0.45 ], [ -15, 9, 30, 4, 0.2 ] ].forEach( item => {
+          addPart( new Rectangle( item[ 0 ], item[ 1 ], item[ 2 ], item[ 3 ], {
+            fill: data.color, stroke: '#315E70', lineWidth: 1, rotation: item[ 4 ]
+          } ) );
+        } );
+      }
+      else if ( key === 'centrosome' ) {
+        addPart( new Rectangle( -16, -5, 32, 10, 5, 5, { fill: data.color, stroke: '#8A6825', lineWidth: 1.5, rotation: 0.8 } ) );
+        addPart( new Rectangle( -5, -16, 10, 32, 5, 5, { fill: data.color, stroke: '#8A6825', lineWidth: 1.5, rotation: -0.8 } ) );
+      }
+      else {
+        addPart( new Circle( data.radius, {
+          fill: data.color, stroke: '#34505C', lineWidth: 2
+        } ) );
+      }
+      const labelText = key === 'centrosome' ? 'Centrosome' : key === 'cytoskeleton' ? 'Filaments' : key === 'golgi' ? 'Golgi' : data.name;
+      const label = new Text( labelText, {
+        font: readableBoldFont( key === 'cytoskeleton' ? 9 : 10 ),
+        fill: '#153248', maxWidth: Math.max( 60, data.radius * 2.8 ),
+        centerX: 0, centerY: key === 'nucleolus' ? 27 : 0, pickable: false
       } );
-      const label = new Text( key === 'centrosome' ? 'Centrosome' : key === 'cytoskeleton' ? 'Filaments' : data.name, {
-        font: new PhetFont( { size: key === 'cytoskeleton' ? 9 : 10, weight: 'bold' } ),
-        fill: '#153248', maxWidth: data.radius * 2.3,
-        centerX: 0, centerY: 0, pickable: false
-      } );
-      const node = new Node( { children: [ circle, label ], x: x, y: y, cursor: 'pointer' } );
+      const node = new Node( { children: [ ...parts, label ], x: x, y: y, cursor: 'pointer' } );
       node.addInputListener( new FireListener( { fire: () => {
         model.selectedOrganelleProperty.value = key;
         model.rightPanelProperty.value = 'organelle';
       } } ) );
       organelleNodes[ key ] = node;
-      organelleShapes[ key ] = circle;
+      organelleShapes[ key ] = parts.filter( part => part.stroke !== null );
       cellRoot.addChild( node );
     };
     Object.keys( INFO ).filter( key => key !== 'membrane' && key !== 'cytoplasm' ).forEach( createOrganelle );
@@ -279,12 +333,12 @@ class AnimalCellScreenView extends ScreenView {
     cellRoot.centerX = this.layoutBounds.centerX;
     cellRoot.centerY = panelTop + panelHeight * 0.47;
 
-    const flowCaption = new Text( 'Instructions → protein → packaging → export', {
-      font: new PhetFont( 11 ), fill: '#345D6C', centerX: this.layoutBounds.centerX,
+    const flowCaption = new Text( 'Ribosome → rough ER → Golgi → vesicle → membrane', {
+      font: readableFont( 11 ), fill: '#345D6C', centerX: this.layoutBounds.centerX,
       top: panelTop + panelHeight - 34, maxWidth: 455
     } );
     const energyCaption = new Text( 'Glucose + oxygen → mitochondria → usable ATP', {
-      font: new PhetFont( 11 ), fill: '#345D6C', centerX: this.layoutBounds.centerX,
+      font: readableFont( 11 ), fill: '#345D6C', centerX: this.layoutBounds.centerX,
       top: flowCaption.bottom + 2, maxWidth: 455
     } );
     this.addChild( flowCaption );
@@ -294,13 +348,14 @@ class AnimalCellScreenView extends ScreenView {
     const rightContent = new Node();
     this.addChild( leftContent );
     this.addChild( rightContent );
+    let activeExploreQuestion = null;
 
     const makeButton = ( label, listener, color = '#DDF3FA', size = 12 ) => new RectangularPushButton( {
-      content: new Text( label, { font: new PhetFont( size ), maxWidth: sideWidth - 26 } ),
+      content: new Text( label, { font: readableFont( size ), maxWidth: sideWidth - 26 } ),
       baseColor: color, listener: listener
     } );
     const addPanelTitle = ( root, text, x, y ) => root.addChild( new Text( text, {
-      font: new PhetFont( { size: 18, weight: 'bold' } ), fill: '#125F7B',
+      font: readableBoldFont( 18 ), fill: '#125F7B',
       left: x + 14, top: y + 12, maxWidth: sideWidth - 28
     } ) );
 
@@ -334,7 +389,7 @@ class AnimalCellScreenView extends ScreenView {
 
       if ( mode === 'learn' ) {
         const learnText = new Text( 'Select any structure in the cell. Follow the pathways below the diagram, then open its detail card for connections and failure effects.', {
-          font: new PhetFont( 13 ), fill: '#435E69', maxWidth: sideWidth - 28,
+          font: readableFont( 13 ), fill: '#435E69', maxWidth: sideWidth - 28,
           left: leftX + 14, top: tabs.bottom + 15
         } );
         leftContent.addChild( learnText );
@@ -342,7 +397,7 @@ class AnimalCellScreenView extends ScreenView {
           model.rightPanelProperty.value = 'organelle';
         }, '#BFEAF2', 12 ).mutate( { left: leftX + 14, top: learnText.bottom + 15 } ) );
         const modelNote = new Text( 'Model note: cells use RNA messages between DNA instructions and ribosomes. Pathways here are simplified for learning.', {
-          font: new PhetFont( 11 ), fill: '#5A6570', maxWidth: sideWidth - 28,
+          font: readableFont( 11 ), fill: '#5A6570', maxWidth: sideWidth - 28,
           left: leftX + 14, top: learnText.bottom + 68
         } );
         leftContent.addChild( modelNote );
@@ -355,26 +410,26 @@ class AnimalCellScreenView extends ScreenView {
                      complexity === 'Standard' ? 'One or more live indicators are outside the healthy range. Compare likely causes.' :
                      'Open inquiry: diagnose the problem from live data and organelle behavior; no clue is shown.';
         const clueText = new Text( clue, {
-          font: new PhetFont( 12 ), fill: '#435E69', maxWidth: sideWidth - 28,
+          font: readableFont( 12 ), fill: '#435E69', maxWidth: sideWidth - 28,
           left: leftX + 14, top: taskTop
         } );
         leftContent.addChild( clueText );
         const feedback = new Text( model.challengeFeedbackProperty.value, {
-          font: new PhetFont( 11 ), fill: '#355967', maxWidth: sideWidth - 28,
+          font: readableFont( 11 ), fill: '#355967', maxWidth: sideWidth - 28,
           left: leftX + 14, top: clueText.bottom + 11
         } );
         leftContent.addChild( feedback );
         leftContent.addChild( makeButton( 'Start / restart rescue case', () => model.startRescueChallenge(), '#FFE080', 11 ).mutate( { left: leftX + 14, top: feedback.bottom + 11 } ) );
         leftContent.addChild( makeButton( 'Test whether the cell is rescued', () => model.testRescue(), '#A9E7C2', 11 ).mutate( { left: leftX + 14, top: feedback.bottom + 53 } ) );
         const hintText = new Text( model.hintsEnabledProperty.value ? model.supportMessageProperty.value : 'Hints are off in Teacher Mode.', {
-          font: new PhetFont( 10 ), fill: '#58656B', maxWidth: sideWidth - 28,
+          font: readableFont( 10 ), fill: '#58656B', maxWidth: sideWidth - 28,
           left: leftX + 14, top: feedback.bottom + 102
         } );
         leftContent.addChild( hintText );
       }
       else if ( mode === 'challenge' ) {
         const instruction = new Text( 'Use the controls below to change a suspected cause, then return to Diagnose and test whether the cell recovered.', {
-          font: new PhetFont( 11 ), fill: '#435E69', maxWidth: sideWidth - 28,
+          font: readableFont( 11 ), fill: '#435E69', maxWidth: sideWidth - 28,
           left: leftX + 14, top: taskTop
         } );
         leftContent.addChild( instruction );
@@ -392,7 +447,7 @@ class AnimalCellScreenView extends ScreenView {
       else if ( mode === 'whatif' && model.experimentPanelProperty.value === 'question' ) {
         const scenario = model.selectedScenarioProperty.value;
         const scenarioText = new Text( 'Question: ' + scenario.question, {
-          font: new PhetFont( 12 ), fill: '#435E69', maxWidth: sideWidth - 28,
+          font: readableFont( 12 ), fill: '#435E69', maxWidth: sideWidth - 28,
           left: leftX + 14, top: taskTop
         } );
         leftContent.addChild( scenarioText );
@@ -407,7 +462,7 @@ class AnimalCellScreenView extends ScreenView {
         leftContent.addChild( nextButton );
 
         const predictionLabel = new Text( 'Before testing, predict the selected output:', {
-          font: new PhetFont( 10 ), fill: '#435E69', left: leftX + 14, top: nextButton.bottom + 9
+          font: readableFont( 10 ), fill: '#435E69', left: leftX + 14, top: nextButton.bottom + 9
         } );
         leftContent.addChild( predictionLabel );
         const predictionButtons = [ 'increase', 'decrease', 'stay the same' ].map( direction => makeButton( direction, () => {
@@ -426,17 +481,17 @@ class AnimalCellScreenView extends ScreenView {
         runButton.top = predictionRow.bottom + 7;
         leftContent.addChild( runButton );
         const feedback = new Text( model.feedbackProperty.value, {
-          font: new PhetFont( 10 ), fill: '#3F6873', maxWidth: sideWidth - 28,
+          font: readableFont( 10 ), fill: '#3F6873', maxWidth: sideWidth - 28,
           left: leftX + 14, top: runButton.bottom + 8
         } );
         leftContent.addChild( feedback );
         const supportText = new Text( model.hintsEnabledProperty.value ? model.supportMessageProperty.value : 'Hints are off in Teacher Mode.', {
-          font: new PhetFont( 9 ), fill: '#58656B', maxWidth: sideWidth - 28,
+          font: readableFont( 9 ), fill: '#58656B', maxWidth: sideWidth - 28,
           left: leftX + 14, top: feedback.bottom + 4
         } );
         leftContent.addChild( supportText );
         const controlsLabel = new Text( 'Adjust a control below, then compare the data. Keep other conditions steady.', {
-          font: new PhetFont( 10 ), fill: '#536A73', maxWidth: sideWidth - 28,
+          font: readableFont( 10 ), fill: '#536A73', maxWidth: sideWidth - 28,
           left: leftX + 14, top: supportText.bottom + 4
         } );
         leftContent.addChild( controlsLabel );
@@ -449,7 +504,7 @@ class AnimalCellScreenView extends ScreenView {
       }
       else if ( mode === 'whatif' ) {
         const instruction = new Text( 'Adjust one variable at a time. Keep other settings steady, then save the result as a trial.', {
-          font: new PhetFont( 11 ), fill: '#435E69', maxWidth: sideWidth - 28,
+          font: readableFont( 11 ), fill: '#435E69', maxWidth: sideWidth - 28,
           left: leftX + 14, top: taskTop
         } );
         leftContent.addChild( instruction );
@@ -466,7 +521,7 @@ class AnimalCellScreenView extends ScreenView {
       }
       else if ( mode === 'explore' && model.experimentPanelProperty.value === 'question' ) {
         const prompts = new Text( 'Try a fair investigation:\n• Compare two structures in one pathway.\n• Change one condition and watch direct and downstream effects.\n• Record and compare at least two trials.', {
-          font: new PhetFont( 11 ), fill: '#435E69', maxWidth: sideWidth - 28,
+          font: readableFont( 11 ), fill: '#435E69', maxWidth: sideWidth - 28,
           left: leftX + 14, top: taskTop
         } );
         leftContent.addChild( prompts );
@@ -476,10 +531,52 @@ class AnimalCellScreenView extends ScreenView {
         }, '#BFEAF2', 10 ).mutate( { left: leftX + 14, top: prompts.bottom + 8 } ) );
         leftContent.addChild( makeButton( 'Reset healthy cell', () => model.resetCell(), '#F2E6CA', 9 ).mutate( { left: leftX + 14, top: prompts.bottom + 42 } ) );
       }
+      else if ( mode === 'explore' ) {
+        const currentDefinition = AnimalCellModel.VARIABLE_DEFINITIONS.find( item => item.key === model.selectedVariableProperty.value ) || AnimalCellModel.VARIABLE_DEFINITIONS[ 0 ];
+        const workflow = new Text( 'QUESTION → PREDICT → CHANGE → RUN\nOBSERVE → EXPLAIN', {
+          font: readableBoldFont( 9 ), fill: '#125F7B', maxWidth: sideWidth - 28,
+          left: leftX + 14, top: taskTop
+        } );
+        leftContent.addChild( workflow );
+        activeExploreQuestion = new Text( '', {
+          font: readableFont( 10 ), fill: '#435E69', maxWidth: sideWidth - 28,
+          left: leftX + 14, top: workflow.bottom + 3
+        } );
+        activeExploreQuestion.string = 'How does ' + currentDefinition.label.toLowerCase() + ' affect ' + currentDefinition.output + '?';
+        leftContent.addChild( activeExploreQuestion );
+        const predictLabel = new Text( 'Make a prediction, then change one control:', {
+          font: readableFont( 9 ), fill: '#435E69', left: leftX + 14,
+          top: activeExploreQuestion.bottom + 3
+        } );
+        leftContent.addChild( predictLabel );
+        const predictionRow = new HBox( {
+          children: [ 'increase', 'decrease', 'stay the same' ].map( direction => makeButton( direction, () => {
+            model.makePrediction( direction );
+          }, model.predictionProperty.value === direction ? '#B5E8C0' : '#EAF5F8', 8 ) ),
+          spacing: 2, left: leftX + 8, top: predictLabel.bottom + 2
+        } );
+        leftContent.addChild( predictionRow );
+        const actions = new HBox( {
+          children: [
+            makeButton( 'Run trial', () => {
+              const definition = AnimalCellModel.VARIABLE_DEFINITIONS.find( item => item.key === model.selectedVariableProperty.value ) || currentDefinition;
+              model.comparePrediction( definition.outputKey );
+              renderLeft();
+            }, '#FFE8A3', 9 ),
+            makeButton( 'Save trial', () => {
+              model.recordTrial();
+              model.rightPanelProperty.value = 'notebook';
+              renderRight();
+            }, '#BCEACB', 9 )
+          ],
+          spacing: 4, left: leftX + 10, top: predictionRow.bottom + 3
+        } );
+        leftContent.addChild( actions );
+      }
       else {
         const supportMessage = model.hintsEnabledProperty.value ? model.supportMessageProperty.value : 'Hints are off in Teacher Mode.';
         const support = new Text( model.supportLevelProperty.value + ': ' + supportMessage, {
-          font: new PhetFont( 9 ), fill: '#435E69', maxWidth: sideWidth - 28,
+          font: readableFont( 9 ), fill: '#435E69', maxWidth: sideWidth - 28,
           left: leftX + 14, top: taskTop
         } );
         leftContent.addChild( support );
@@ -514,16 +611,16 @@ class AnimalCellScreenView extends ScreenView {
       const definitions = model.getDefinitions( group );
       const allowed = new Set( model.enabledVariablesProperty.value );
       const visibleDefinitions = definitions.filter( definition => allowed.has( definition.key ) );
-      const startY = panelTop + 190;
+      const startY = panelTop + ( mode === 'explore' ? 250 : 190 );
       const rowHeight = Math.min( 60, ( panelTop + panelHeight - startY - 8 ) / Math.max( visibleDefinitions.length, 1 ) );
       visibleDefinitions.forEach( ( definition, index ) => {
         const y = startY + index * rowHeight;
         const label = new Text( definition.label, {
-          font: new PhetFont( 10 ), fill: '#183A4B', left: leftX + 12, top: y,
+          font: readableFont( 10 ), fill: '#183A4B', left: leftX + 12, top: y,
           maxWidth: sideWidth - 45
         } );
         const value = new Text( '', {
-          font: new PhetFont( { size: 10, weight: 'bold' } ), fill: '#125F7B',
+          font: readableBoldFont( 10 ), fill: '#125F7B',
           right: leftX + sideWidth - 12, top: y
         } );
         const property = model.variables[ definition.key ];
@@ -531,6 +628,9 @@ class AnimalCellScreenView extends ScreenView {
         const updateValue = current => {
           value.string = current + '%';
           model.selectedVariableProperty.value = definition.key;
+          if ( activeExploreQuestion && model.modeProperty.value === 'explore' ) {
+            activeExploreQuestion.string = 'How does ' + definition.label.toLowerCase() + ' affect ' + definition.output + '?';
+          }
         };
         property.lazyLink( updateValue );
         sliderUnlinks.push( () => property.unlink( updateValue ) );
@@ -542,7 +642,7 @@ class AnimalCellScreenView extends ScreenView {
         slider.left = leftX + 12;
         slider.top = label.bottom + 3;
         sliderRoot.addChild( new Text( 'Affects: ' + definition.output, {
-          font: new PhetFont( 8 ), fill: '#526A73', left: leftX + 12,
+          font: readableFont( 8 ), fill: '#526A73', left: leftX + 12,
           top: slider.bottom + 1, maxWidth: sideWidth - 24
         } ) );
         sliderRoot.addChild( label );
@@ -572,22 +672,22 @@ class AnimalCellScreenView extends ScreenView {
 
       if ( panelMode === 'data' ) {
         rightContent.addChild( new Text( 'Live Cell Data', {
-          font: new PhetFont( { size: 17, weight: 'bold' } ), fill: '#125F7B',
+          font: readableBoldFont( 17 ), fill: '#125F7B',
           left: rightX + 13, top: tabRow.bottom + 8
         } ) );
         METRICS.forEach( ( metric, index ) => {
-          const y = tabRow.bottom + 37 + index * 37;
+          const y = tabRow.bottom + 37 + index * 29;
           const label = new Text( metric[ 0 ], {
-            font: new PhetFont( 10 ), fill: '#294957', left: rightX + 13, top: y
+            font: readableFont( 10 ), fill: '#294957', left: rightX + 13, top: y
           } );
           const number = new Text( '', {
-            font: new PhetFont( { size: 10, weight: 'bold' } ), fill: '#173A4A',
+            font: readableBoldFont( 10 ), fill: '#173A4A',
             right: rightX + sideWidth - 12, top: y
           } );
-          const back = new Rectangle( 0, 0, sideWidth - 26, 8, 3, 3, {
+          const back = new Rectangle( 0, 0, sideWidth - 26, 6, 3, 3, {
             fill: '#E2EAED', left: rightX + 13, top: y + 17
           } );
-          const bar = new Rectangle( 0, 0, 1, 8, 3, 3, {
+          const bar = new Rectangle( 0, 0, 1, 6, 3, 3, {
             fill: metric[ 2 ], left: rightX + 13, top: y + 17
           } );
           const property = metricProperty( model, metric[ 1 ] );
@@ -602,16 +702,35 @@ class AnimalCellScreenView extends ScreenView {
           rightContent.addChild( back );
           rightContent.addChild( bar );
         } );
-        const status = new Text( 'O₂ supply ' + model.variables.oxygen.value + '/100  •  Glucose ' + model.variables.glucose.value + '/100', {
-          font: new PhetFont( 10 ), fill: '#526A73', left: rightX + 13,
-          top: tabRow.bottom + 37 + METRICS.length * 37
-        } );
-        rightContent.addChild( status );
-        const updateFuelStatus = () => {
-          status.string = 'O₂ supply ' + model.variables.oxygen.value + '/100  •  Glucose ' + model.variables.glucose.value + '/100';
+        const trendHistories = { atp: [], health: [] };
+        const addTrendGraph = ( key, label, x ) => {
+          const graphTop = panelTop + panelHeight - 53;
+          rightContent.addChild( new Text( label, {
+            font: readableBoldFont( 9 ), fill: '#294957', left: x, top: graphTop - 14
+          } ) );
+          const bars = [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ].map( index => new Rectangle( 0, 0, 7, 2, {
+            fill: key === 'atp' ? '#E5A02C' : '#4DA66B', left: x + index * 9, bottom: graphTop + 18
+          } ) );
+          bars.forEach( bar => rightContent.addChild( bar ) );
+          const history = trendHistories[ key ];
+          const updateGraph = value => {
+            if ( history.length === 0 || history[ history.length - 1 ] !== value ) {
+              history.push( value );
+              if ( history.length > bars.length ) {
+                history.shift();
+              }
+            }
+            bars.forEach( ( bar, index ) => {
+              const sample = history[ index ] || history[ 0 ] || value;
+              const height = Math.max( 2, sample / 100 * 18 );
+              bar.rectHeight = height;
+              bar.bottom = graphTop + 18;
+            } );
+          };
+          linkPanelProperty( model[ key + 'Property' ], updateGraph );
         };
-        linkPanelProperty( model.variables.oxygen, updateFuelStatus );
-        linkPanelProperty( model.variables.glucose, updateFuelStatus );
+        addTrendGraph( 'atp', 'ATP trend', rightX + 13 );
+        addTrendGraph( 'health', 'Health trend', rightX + 125 );
       }
       else if ( panelMode === 'organelle' ) {
         const data = INFO[ model.selectedOrganelleProperty.value ];
@@ -620,7 +739,7 @@ class AnimalCellScreenView extends ScreenView {
         let y = tabRow.bottom + 37;
         details.forEach( text => {
           const description = new Text( text, {
-            font: new PhetFont( 11 ), fill: '#294957', maxWidth: sideWidth - 26,
+            font: readableFont( 11 ), fill: '#294957', maxWidth: sideWidth - 26,
             left: rightX + 13, top: y
           } );
           rightContent.addChild( description );
@@ -635,71 +754,45 @@ class AnimalCellScreenView extends ScreenView {
       }
       else if ( panelMode === 'notebook' ) {
         addPanelTitle( rightContent, 'Lab notebook', rightX, tabRow.bottom + 1 );
-        const note = new Text( 'Saved trials: ' + model.trialsProperty.value.length + '\nPrediction → test → observation → CER explanation', {
-          font: new PhetFont( 10 ), fill: '#526A73', maxWidth: sideWidth - 26,
+        const note = new Text( 'Saved trials: ' + model.trialsProperty.value.length + '  |  Relative values, not real-cell measurements', {
+          font: readableFont( 9 ), fill: '#526A73', maxWidth: sideWidth - 26,
           left: rightX + 13, top: tabRow.bottom + 34
         } );
         rightContent.addChild( note );
         let y = note.bottom + 5;
-        const cerEntries = [
-          [ 'Claim', model.cerClaimProperty.value, 'claim' ],
-          [ 'Evidence', model.cerEvidenceProperty.value, 'evidence' ],
-          [ 'Reasoning', model.cerReasoningProperty.value, 'reasoning' ]
-        ];
-        cerEntries.forEach( entry => {
-          const text = new Text( entry[ 0 ] + ': ' + entry[ 1 ], {
-            font: new PhetFont( 8 ), fill: '#294957', maxWidth: sideWidth - 26,
+        const tableHeader = new Text( 'TRIAL     O₂       ATP      HEALTH', {
+          font: readableBoldFont( 9 ), fill: '#125F7B', left: rightX + 13, top: y
+        } );
+        rightContent.addChild( tableHeader );
+        y = tableHeader.bottom + 2;
+        model.trialsProperty.value.slice( -5 ).forEach( trial => {
+          const row = new Text( '#' + trial.number + '       ' + trial.oxygen + '%      ' + trial.atp + '      ' + trial.cellHealth + '%\nObservation: ' + trial.observation, {
+            font: readableFont( 8 ), fill: '#294957', maxWidth: sideWidth - 26,
             left: rightX + 13, top: y
           } );
-          rightContent.addChild( text );
-          y = text.bottom + 1;
-          const choose = makeButton( 'Next ' + entry[ 0 ].toLowerCase(), () => {
-            model.cycleCER( entry[ 2 ] );
-            renderRight();
-          }, '#EAF5F8', 8 );
-          choose.left = rightX + 13;
-          choose.top = y;
-          rightContent.addChild( choose );
-          y = choose.bottom + 2;
+          rightContent.addChild( row );
+          y = row.bottom + 3;
         } );
-        rightContent.addChild( new Text( 'Trials: Question | independent variable | dependent result | observation', {
-          font: new PhetFont( 8 ), fill: '#294957', maxWidth: sideWidth - 26,
+        const cerSummary = new Text( 'Claim: ' + model.cerClaimProperty.value.slice( 0, 25 ) + '…\nEvidence: ' + model.cerEvidenceProperty.value.slice( 0, 25 ) + '…\nReasoning: ' + model.cerReasoningProperty.value.slice( 0, 25 ) + '…', {
+          font: readableFont( 8 ), fill: '#294957', maxWidth: sideWidth - 26,
           left: rightX + 13, top: y
-        } ) );
-        y += 19;
-        model.trialsProperty.value.slice( -2 ).forEach( trial => {
-          const item = new Text( '#' + trial.number + ' ' + trial.question.slice( 0, 55 ) + '\nIV: ' + trial.independentVariable + ' = ' + trial.value + '%; prediction: ' + trial.prediction + '\nDV: ' + trial.dependentVariable + ' ' + trial.before + '→' + trial.result + '%; ' + trial.observation, {
-            font: new PhetFont( 8 ), fill: '#294957', maxWidth: sideWidth - 26,
-            left: rightX + 13, top: y
-          } );
-          rightContent.addChild( item );
-          const graphY = item.bottom + 2;
-          rightContent.addChild( new Rectangle( 0, 0, sideWidth - 26, 5, 2, 2, {
-            fill: '#E2EAED', left: rightX + 13, top: graphY
-          } ) );
-          const beforeBar = new Rectangle( 0, 0, sideWidth - 26, 3, 1, 1, {
-            fill: '#4A91D3', left: rightX + 13, top: graphY
-          } );
-          const afterBar = new Rectangle( 0, 0, sideWidth - 26, 3, 1, 1, {
-            fill: '#D15A9F', left: rightX + 13, top: graphY + 3
-          } );
-          beforeBar.scaleX = Math.max( 0.01, trial.before / 100 );
-          afterBar.scaleX = Math.max( 0.01, trial.result / 100 );
-          rightContent.addChild( beforeBar );
-          rightContent.addChild( afterBar );
-          y = graphY + 10;
         } );
-        const observationButton = makeButton( 'Change observation note', () => {
-          model.cycleObservation();
+        rightContent.addChild( cerSummary );
+        const cerButtons = new HBox( {
+          children: [ 'claim', 'evidence', 'reasoning' ].map( role => makeButton( 'Next ' + role, () => {
+            model.cycleCER( role );
+            renderRight();
+          }, '#EAF5F8', 8 ) ),
+          spacing: 2, left: rightX + 8, top: cerSummary.bottom + 2
+        } );
+        rightContent.addChild( cerButtons );
+        rightContent.addChild( makeButton( 'Reset experiment', () => {
+          model.resetCell();
+          model.clearTrials();
+          model.startTrial();
+          model.rightPanelProperty.value = 'notebook';
           renderRight();
-        }, '#EAF5F8', 9 );
-        observationButton.left = rightX + 13;
-        observationButton.top = Math.min( y + 3, panelTop + panelHeight - 52 );
-        rightContent.addChild( observationButton );
-        rightContent.addChild( new Text( 'Current note: ' + model.observationChoiceProperty.value, {
-          font: new PhetFont( 9 ), fill: '#526A73', maxWidth: sideWidth - 26,
-          left: rightX + 13, top: observationButton.bottom + 4
-        } ) );
+        }, '#F2E6CA', 9 ).mutate( { left: rightX + 13, top: cerButtons.bottom + 3 } ) );
       }
       else {
         renderTeacherPanel( rightContent, tabRow );
@@ -718,7 +811,7 @@ class AnimalCellScreenView extends ScreenView {
       root.addChild( toggle );
       if ( !teacherOn ) {
         root.addChild( new Text( 'Turn on to choose available variables and cell structures, toggle hints, and set challenge complexity.', {
-          font: new PhetFont( 10 ), fill: '#526A73', maxWidth: sideWidth - 26,
+          font: readableFont( 10 ), fill: '#526A73', maxWidth: sideWidth - 26,
           left: rightX + 13, top: toggle.bottom + 8
         } ) );
         return;
@@ -737,7 +830,7 @@ class AnimalCellScreenView extends ScreenView {
       names.forEach( ( item, index ) => {
         const isEnabled = enabled.value.includes( item[ 0 ] );
         const row = new Text( ( isEnabled ? '✓ ' : '□ ' ) + item[ 1 ], {
-          font: new PhetFont( 9 ), fill: isEnabled ? '#235B3D' : '#785454',
+          font: readableFont( 9 ), fill: isEnabled ? '#235B3D' : '#785454',
           left: rightX + 15, top: groupToggle.bottom + 6 + index * 19,
           maxWidth: sideWidth - 30, cursor: 'pointer'
         } );
@@ -771,8 +864,10 @@ class AnimalCellScreenView extends ScreenView {
     model.rightPanelProperty.link( () => renderRight() );
     model.selectedOrganelleProperty.link( key => {
       Object.keys( organelleShapes ).forEach( orgKey => {
-        organelleShapes[ orgKey ].lineWidth = orgKey === key ? 5 : 2;
-        organelleShapes[ orgKey ].stroke = orgKey === key ? '#102D3A' : '#34505C';
+        organelleShapes[ orgKey ].forEach( shape => {
+          shape.lineWidth = orgKey === key ? 3 : 1.5;
+          shape.stroke = orgKey === key ? '#102D3A' : '#34505C';
+        } );
       } );
       renderRight();
     } );
@@ -829,11 +924,17 @@ class AnimalCellScreenView extends ScreenView {
     } );
     model.atpProperty.link( atp => {
       organelleNodes.mitochondria.scale = 0.88 + atp / 400;
-      energyParticles.forEach( particle => { particle.opacity = Math.min( 1, 0.2 + atp / 125 ); } );
+      energyParticles.forEach( ( particle, index ) => {
+        particle.opacity = Math.min( 1, 0.2 + atp / 125 );
+        particle.visible = atp > index * 28;
+      } );
     } );
     model.proteinProperty.link( protein => {
       organelleNodes.ribosomes.scale = 0.86 + protein / 360;
-      proteinParticles.forEach( particle => { particle.opacity = Math.min( 1, 0.18 + protein / 120 ); } );
+      proteinParticles.forEach( ( particle, index ) => {
+        particle.opacity = Math.min( 1, 0.18 + protein / 120 );
+        particle.visible = protein > index * 28;
+      } );
     } );
     model.wasteProperty.link( waste => {
       wasteParticles.forEach( particle => { particle.opacity = Math.min( 1, 0.18 + waste / 115 ); } );
@@ -845,21 +946,21 @@ class AnimalCellScreenView extends ScreenView {
       organelleNodes.vesicles.opacity = Math.min( 1, 0.25 + transport / 130 );
     } );
     model.flowPhaseProperty.link( phase => {
+      const proteinPath = [ [ -150, 28 ], [ -87, 89 ], [ 97, -63 ], [ 149, 66 ], [ 185, 4 ] ];
       proteinParticles.forEach( ( particle, index ) => {
         const t = ( phase + index / proteinParticles.length ) % 1;
-        if ( t < 0.48 ) {
-          particle.centerX = -90 + t / 0.48 * 177;
-          particle.centerY = 65 - t / 0.48 * 116;
-        }
-        else {
-          particle.centerX = 87 + ( t - 0.48 ) / 0.52 * 101;
-          particle.centerY = -51 + ( t - 0.48 ) / 0.52 * 55;
-        }
+        const pathPosition = t * ( proteinPath.length - 1 );
+        const segment = Math.min( proteinPath.length - 2, Math.floor( pathPosition ) );
+        const segmentProgress = pathPosition - segment;
+        particle.centerX = proteinPath[ segment ][ 0 ] + ( proteinPath[ segment + 1 ][ 0 ] - proteinPath[ segment ][ 0 ] ) * segmentProgress;
+        particle.centerY = proteinPath[ segment ][ 1 ] + ( proteinPath[ segment + 1 ][ 1 ] - proteinPath[ segment ][ 1 ] ) * segmentProgress;
       } );
       energyParticles.forEach( ( particle, index ) => {
-        const angle = ( phase + index / energyParticles.length ) * Math.PI * 2;
-        particle.centerX = -132 + Math.cos( angle ) * 43;
-        particle.centerY = -70 + Math.sin( angle ) * 34;
+        const energyTargets = [ [ -150, 28 ], [ 50, 24 ], [ 149, 66 ] ];
+        const t = ( phase + index / energyParticles.length ) % 1;
+        const target = energyTargets[ index ];
+        particle.centerX = -132 + ( target[ 0 ] + 132 ) * t;
+        particle.centerY = -70 + ( target[ 1 ] + 70 ) * t;
       } );
       wasteParticles.forEach( ( particle, index ) => {
         const t = ( phase + index / wasteParticles.length ) % 1;
@@ -869,7 +970,7 @@ class AnimalCellScreenView extends ScreenView {
     } );
 
     this.addChild( new Text( 'Simplified model: relative indicators show selected relationships, not real cell measurements.', {
-      font: new PhetFont( 9 ), fill: '#536A73', centerX: this.layoutBounds.centerX,
+      font: readableFont( 9 ), fill: '#536A73', centerX: this.layoutBounds.centerX,
       bottom: this.layoutBounds.maxY - 5, maxWidth: viewWidth - 80
     } ) );
 

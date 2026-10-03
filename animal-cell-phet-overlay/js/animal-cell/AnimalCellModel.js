@@ -241,13 +241,16 @@ class AnimalCellModel {
     const dependentVariable = challenge ? challenge.outputKey : definition.outputKey;
     const trial = {
       number: this.trialsProperty.value.length + 1,
-      question: challenge ? 'Rescue challenge: ' + challenge.clue : scenario.question,
+      question: challenge ? 'Rescue challenge: ' + challenge.clue : this.modeProperty.value === 'explore' ? 'How does ' + definition.label.toLowerCase() + ' affect ' + definition.output + '?' : scenario.question,
       prediction: this.predictionProperty.value || 'Not recorded',
       independentVariable: definition.label,
       value: this.variables[ independentVariable ].value,
       dependentVariable: dependentVariable,
       before: start[ dependentVariable ],
       result: after[ dependentVariable ],
+      oxygen: this.variables.oxygen.value,
+      atp: after.atp,
+      cellHealth: after.health,
       observation: this.observationChoiceProperty.value,
       claim: this.cerClaimProperty.value,
       evidence: this.cerEvidenceProperty.value,
