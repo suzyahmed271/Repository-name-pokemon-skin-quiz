@@ -8,10 +8,8 @@ on:
     paths:
       - 'animal-cell-phet-overlay/**'
       - '.github/workflows/build-animal-cell-phet.yml'
-
 permissions:
   contents: read
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -37,7 +35,10 @@ jobs:
           git clone --depth 1 https://github.com/phetsims/perennial.git perennial-alias
           for repo in assert axon babel brand chipper dot gene-expression-essentials griddle joist kite phet-core phetcommon phetmarks query-string-machine scenery scenery-phet sherpa sun tambo tandem twixt utterance-queue; do
             sha=$(node -e "const d=require('./gene-expression-essentials/dependencies.json'); process.stdout.write(d['$repo']?.sha || '')")
-            if [ -n "$sha" ]; then git -C "$repo" checkout --quiet "$sha"; fi
+            if [ -n "$sha" ]; then
+              git -C "$repo" fetch --quiet --unshallow
+              git -C "$repo" checkout --quiet "$sha"
+            fi
           done
       - name: Overlay Animal Cell source
         shell: bash
