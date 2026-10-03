@@ -1,3 +1,11 @@
+// Copyright 2015-2026, University of Colorado Boulder
+
+/**
+ * Screen definition for the Animal Cell Systems Lab.
+ *
+ * @author Suzan Ahmed Mustafa
+ */
+
 import Property from '../../../../axon/js/Property.js';
 import Screen from '../../../../joist/js/Screen.js';
 import StringProperty from '../../../../axon/js/StringProperty.js';
