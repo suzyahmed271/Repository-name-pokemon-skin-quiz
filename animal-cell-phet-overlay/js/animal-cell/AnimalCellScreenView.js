@@ -28,101 +28,101 @@ import AnimalCellModel from './AnimalCellModel.js';
 const INFO = {
   membrane: {
     name: 'Cell membrane', color: '#36B8D0',
-    job: 'A selectively permeable boundary that regulates exchange with the environment.',
-    connects: 'Water, nutrients, wastes, vesicles, and internal balance.',
-    failure: 'If transport control is disrupted, the cell has trouble maintaining stable internal conditions.',
-    position: [ 185, 4 ], radius: 21, functionKey: 'permeability'
+    job: 'A selective boundary that controls what enters and leaves.',
+    connects: 'Water, nutrients, wastes, and transport vesicles.',
+    failure: 'Transport and internal balance become disrupted.',
+    position: [ 185, 4 ], radius: 21, functionKey: 'permeability', testVariable: 'permeability', pathway: 'transport'
   },
   cytoplasm: {
     name: 'Cytoplasm', color: '#C9F4FF',
-    job: 'The region inside the membrane where organelles are suspended and many reactions occur.',
-    connects: 'Surrounds and supports all cell structures.',
-    failure: 'This model does not simulate cytoplasm failure separately; it is the shared cell workspace.',
-    position: [ -10, 0 ], radius: 78
+    job: 'The fluid workspace where organelles and many reactions are found.',
+    connects: 'Surrounds and supports the cell structures.',
+    failure: 'This simplified model does not vary the cytoplasm separately.',
+    position: [ -10, 0 ], radius: 78, testVariable: 'ph', pathway: 'energy'
   },
   nucleus: {
     name: 'Nucleus', color: '#D968E8',
-    job: 'Contains DNA and helps coordinate cell activities. Cells use RNA messages to carry instructions to ribosomes.',
-    connects: 'Instruction messages guide ribosomes; the nucleolus helps make ribosome components.',
-    failure: 'Lower signaling reduces coordinated, instruction-dependent protein production.',
-    position: [ -22, -12 ], radius: 48, functionKey: 'nucleusSignal'
+    job: 'Contains DNA and coordinates many cell activities.',
+    connects: 'Sends RNA instructions to ribosomes.',
+    failure: 'Instruction-led protein production decreases.',
+    position: [ -22, -12 ], radius: 48, functionKey: 'nucleusSignal', testVariable: 'nucleusSignal', pathway: 'protein'
   },
   nucleolus: {
     name: 'Nucleolus', color: '#9B40B6',
-    job: 'A region inside the nucleus where components used to assemble ribosomes are produced.',
-    connects: 'Supports ribosome availability and therefore protein production.',
-    failure: 'The simplified model represents reduced ribosome support as lower protein capacity.',
-    position: [ -5, -17 ], radius: 14, functionKey: 'nucleusSignal'
+    job: 'Makes components used to assemble ribosomes.',
+    connects: 'Supports ribosomes and protein production.',
+    failure: 'Ribosome support and protein output decrease.',
+    position: [ -5, -17 ], radius: 14, functionKey: 'nucleusSignal', testVariable: 'nucleusSignal', pathway: 'protein'
   },
   mitochondria: {
-    name: 'Mitochondria', color: '#FF9A55',
-    job: 'Release usable energy from food molecules through cellular respiration; oxygen and glucose availability matter.',
-    connects: 'ATP supports many cell processes, including protein production and transport.',
-    failure: 'Reduced function lowers the relative ATP indicator and can limit other processes.',
-    position: [ -132, -70 ], radius: 33, functionKey: 'mitochondria'
+    name: 'Mitochondrion', color: '#FF9A55',
+    job: 'Makes ATP, a usable energy source, during cellular respiration.',
+    connects: 'Oxygen + glucose; ATP powers many cell processes.',
+    failure: 'ATP decreases, so cell processes slow down.',
+    position: [ -132, -70 ], radius: 33, functionKey: 'mitochondria', testVariable: 'mitochondria', pathway: 'energy'
   },
   ribosomes: {
     name: 'Ribosomes', color: '#FFD06A',
-    job: 'Build proteins by using instructions carried in RNA messages.',
-    connects: 'Some ribosomes are free in the cytoplasm; others work on rough ER.',
-    failure: 'Reduced function lowers protein output and can limit materials the cell needs.',
-    position: [ -150, 28 ], radius: 24, functionKey: 'ribosomes'
+    job: 'Builds proteins from RNA instructions.',
+    connects: 'Works with the nucleus and rough ER.',
+    failure: 'Protein production decreases.',
+    position: [ -150, 28 ], radius: 24, functionKey: 'ribosomes', testVariable: 'ribosomes', pathway: 'protein'
   },
   roughER: {
     name: 'Rough ER', color: '#68CEE8',
-    job: 'A membrane network with ribosomes that helps process and move many proteins.',
-    connects: 'Receives newly made proteins and helps route them toward vesicles and Golgi.',
-    failure: 'If processing slows, protein traffic toward packaging is reduced.',
-    position: [ -87, 89 ], radius: 31, functionKey: 'ribosomes'
+    job: 'Processes and routes many newly made proteins.',
+    connects: 'Ribosomes, transport vesicles, and Golgi.',
+    failure: 'Fewer proteins reach Golgi for packaging.',
+    position: [ -87, 89 ], radius: 31, functionKey: 'roughER', testVariable: 'roughER', pathway: 'protein'
   },
   smoothER: {
     name: 'Smooth ER', color: '#6BE0A8',
-    job: 'Makes lipids and supports other cell chemistry, including processing some harmful substances.',
-    connects: 'Supports membrane materials and works alongside other cell systems.',
-    failure: 'This model shows its role as a supporting system; it does not model detailed lipid chemistry.',
-    position: [ 11, -111 ], radius: 27
+    job: 'Makes lipids and helps process some harmful substances.',
+    connects: 'Cell membranes and chemical balance.',
+    failure: 'Lipid and detox support may decrease; details are simplified here.',
+    position: [ 11, -111 ], radius: 27, testVariable: 'toxins', pathway: 'waste'
   },
   golgi: {
     name: 'Golgi apparatus', color: '#F263B1',
     job: 'Modifies, sorts, and packages materials for delivery.',
-    connects: 'Receives materials from ER and packages them into vesicles.',
-    failure: 'Reduced packaging causes export efficiency to fall and materials to back up.',
-    position: [ 97, -63 ], radius: 32, functionKey: 'golgi'
+    connects: 'Receives proteins from ER; sends them in vesicles.',
+    failure: 'Proteins back up and export decreases.',
+    position: [ 97, -63 ], radius: 32, functionKey: 'golgi', testVariable: 'golgi', pathway: 'protein'
   },
   lysosome: {
     name: 'Lysosome', color: '#FF7777',
-    job: 'Breaks down and recycles waste and worn-out cell parts.',
-    connects: 'Receives materials in vesicles and supports waste control.',
-    failure: 'Waste builds up when breakdown and recycling slow.',
-    position: [ 86, 103 ], radius: 24, functionKey: 'lysosomes'
+    job: 'Breaks down and recycles waste and worn-out parts.',
+    connects: 'Receives waste in transport vesicles.',
+    failure: 'Waste builds up and cell stress rises.',
+    position: [ 86, 103 ], radius: 24, functionKey: 'lysosomes', testVariable: 'lysosomes', pathway: 'waste'
   },
   vesicles: {
     name: 'Vesicles', color: '#83DDF3',
-    job: 'Small membrane-bound sacs that transport materials inside the cell or to the membrane.',
-    connects: 'Link ER, Golgi, lysosomes, and the cell membrane.',
-    failure: 'Transport between locations becomes less efficient.',
-    position: [ 149, 66 ], radius: 21, functionKey: 'golgi'
+    job: 'Membrane-bound sacs that carry materials.',
+    connects: 'Link ER, Golgi, lysosomes, and membrane.',
+    failure: 'Delivery between cell regions slows.',
+    position: [ 149, 66 ], radius: 21, functionKey: 'golgi', testVariable: 'golgi', pathway: 'protein'
   },
   vacuole: {
     name: 'Small vacuole', color: '#A995F4',
-    job: 'A small storage sac for water and other materials; animal cells may have small vacuoles.',
+    job: 'A small storage sac for water and other materials.',
     connects: 'Stores materials within the cytoplasm.',
-    failure: 'Storage capacity is reduced; this model does not treat it as a large plant-cell vacuole.',
-    position: [ 24, 125 ], radius: 23, functionKey: 'water'
+    failure: 'Storage and relative cell volume may change.',
+    position: [ 24, 125 ], radius: 23, functionKey: 'water', testVariable: 'water', pathway: 'transport'
   },
   cytoskeleton: {
     name: 'Cytoskeleton', color: '#4E8FA8',
-    job: 'A network of protein filaments that helps support cell shape and organize movement.',
-    connects: 'Helps position organelles and guide intracellular transport.',
-    failure: 'Transport organization and structural support would be reduced; shown conceptually here.',
-    position: [ -13, 61 ], radius: 14, functionKey: 'permeability'
+    job: 'Protein filaments that support cell shape and movement.',
+    connects: 'Positions organelles and guides transport.',
+    failure: 'Structure and movement become less organized.',
+    position: [ -13, 61 ], radius: 14, functionKey: 'permeability', testVariable: 'permeability', pathway: 'transport'
   },
   centrosome: {
     name: 'Centrosome / centrioles', color: '#F0B94E',
-    job: 'The centrosome helps organize microtubules, especially during cell division.',
-    connects: 'Organizes part of the cytoskeleton; it is not a membrane-bound organelle.',
-    failure: 'This model identifies the organizer but does not simulate cell division.',
-    position: [ 50, 24 ], radius: 19, functionKey: 'permeability'
+    job: 'Organizes microtubules, especially during cell division.',
+    connects: 'Works with the cytoskeleton; it has no surrounding membrane.',
+    failure: 'Cell-division organization may be affected; division is not simulated.',
+    position: [ 50, 24 ], radius: 19, functionKey: 'permeability', testVariable: 'permeability', pathway: 'transport'
   }
 };
 
@@ -226,15 +226,39 @@ class AnimalCellScreenView extends ScreenView {
       fill: '#E9FBFF', opacity: 0.92, scaleY: 0.82, cursor: 'pointer'
     } );
     membrane.addInputListener( new FireListener( { fire: () => {
+      model.pathwayHighlightProperty.value = null;
       model.selectedOrganelleProperty.value = 'membrane';
       model.rightPanelProperty.value = 'organelle';
     } } ) );
     cytoplasm.addInputListener( new FireListener( { fire: () => {
+      model.pathwayHighlightProperty.value = null;
       model.selectedOrganelleProperty.value = 'cytoplasm';
       model.rightPanelProperty.value = 'organelle';
     } } ) );
     cellRoot.addChild( membrane );
     cellRoot.addChild( cytoplasm );
+    const pathwayOverlays = {};
+    const addPathwayOverlay = ( key, points, color ) => {
+      const pathShape = new Shape();
+      points.forEach( ( point, index ) => {
+        const vector = new Vector2( point[ 0 ], point[ 1 ] );
+        if ( index === 0 ) {
+          pathShape.moveToPoint( vector );
+        }
+        else {
+          pathShape.lineToPoint( vector );
+        }
+      } );
+      const overlay = new Path( pathShape, {
+        stroke: color, lineWidth: 8, opacity: 0, fill: null, pickable: false
+      } );
+      pathwayOverlays[ key ] = overlay;
+      cellRoot.addChild( overlay );
+    };
+    addPathwayOverlay( 'energy', [ [ -132, -70 ], [ -150, 28 ], [ -87, 89 ], [ 149, 66 ] ], '#EAA22D' );
+    addPathwayOverlay( 'protein', [ [ -150, 28 ], [ -87, 89 ], [ 97, -63 ], [ 149, 66 ], [ 185, 4 ] ], '#D84593' );
+    addPathwayOverlay( 'waste', [ [ 138, 75 ], [ 86, 103 ] ], '#9B6E5F' );
+    addPathwayOverlay( 'transport', [ [ -165, 65 ], [ -100, 125 ], [ 0, 153 ], [ 102, 125 ], [ 165, 65 ] ], '#2E9DB6' );
 
     const organelleNodes = {};
     const organelleShapes = {};
@@ -312,6 +336,7 @@ class AnimalCellScreenView extends ScreenView {
       } );
       const node = new Node( { children: [ ...parts, label ], x: x, y: y, cursor: 'pointer' } );
       node.addInputListener( new FireListener( { fire: () => {
+        model.pathwayHighlightProperty.value = null;
         model.selectedOrganelleProperty.value = key;
         model.rightPanelProperty.value = 'organelle';
       } } ) );
@@ -410,7 +435,7 @@ class AnimalCellScreenView extends ScreenView {
     const renderLeft = () => {
       leftContent.removeAllChildren();
       const mode = model.modeProperty.value;
-      const titleText = mode === 'whatif' ? 'Experiment lab' : mode === 'challenge' ? 'Rescue the Cell' : mode === 'explore' ? 'Explore & test' : 'Learn the system';
+      const titleText = mode === 'whatif' ? 'Experiment lab' : mode === 'challenge' ? 'Rescue the Cell' : mode === 'explore' ? 'Explore & test' : 'Cell Parts';
       addPanelTitle( leftContent, titleText, leftX, panelTop );
       if ( mode === 'explore' ) {
         const exploreKeys = [ 'oxygen', 'glucose', 'water', 'ph', 'temperature', 'mitochondria', 'ribosomes', 'golgi', 'lysosomes', 'permeability' ];
@@ -507,16 +532,19 @@ class AnimalCellScreenView extends ScreenView {
         renderSliders( mode );
         return;
       }
-      const tabY = panelTop + 47;
-      const tabButtons = [
-        [ 'Environment', 'environment' ], [ 'Conditions', 'conditions' ], [ 'Cell parts', 'organelles' ]
-      ].map( item => makeButton( item[ 0 ], () => {
-        model.controlGroupProperty.value = item[ 1 ];
-        model.rightPanelProperty.value = 'data';
-      }, model.controlGroupProperty.value === item[ 1 ] ? '#9EE2F0' : '#EAF5F8', 10 ) );
-      const tabs = new HBox( { children: tabButtons, spacing: 3, left: leftX + 9, top: tabY } );
-      leftContent.addChild( tabs );
-      let taskTop = tabs.bottom + 8;
+      let taskTop = panelTop + 50;
+      if ( mode !== 'learn' ) {
+        const tabY = panelTop + 47;
+        const tabButtons = [
+          [ 'Environment', 'environment' ], [ 'Conditions', 'conditions' ], [ 'Cell parts', 'organelles' ]
+        ].map( item => makeButton( item[ 0 ], () => {
+          model.controlGroupProperty.value = item[ 1 ];
+          model.rightPanelProperty.value = 'data';
+        }, model.controlGroupProperty.value === item[ 1 ] ? '#9EE2F0' : '#EAF5F8', 10 ) );
+        const tabs = new HBox( { children: tabButtons, spacing: 3, left: leftX + 9, top: tabY } );
+        leftContent.addChild( tabs );
+        taskTop = tabs.bottom + 8;
+      }
       if ( mode === 'whatif' || mode === 'challenge' || mode === 'explore' ) {
         const taskTabs = [
           [ mode === 'whatif' ? 'Question' : mode === 'challenge' ? 'Diagnose' : 'Guide', 'question' ],
@@ -531,17 +559,14 @@ class AnimalCellScreenView extends ScreenView {
       }
 
       if ( mode === 'learn' ) {
-        const learnText = new Text( 'Select any structure in the cell. Follow the pathways below the diagram, then open its detail card for connections and failure effects.', {
+        const learnText = new Text( 'Select an organelle in the cell. Its ORGANELLE DETAILS appear here with its function, system connection, and what changes if it fails.', {
           font: readableFont( 13 ), fill: '#435E69', maxWidth: sideWidth - 28,
-          left: leftX + 14, top: tabs.bottom + 15
+          left: leftX + 14, top: taskTop
         } );
         leftContent.addChild( learnText );
-        leftContent.addChild( makeButton( 'Open organelle details', () => {
-          model.rightPanelProperty.value = 'organelle';
-        }, '#BFEAF2', 12 ).mutate( { left: leftX + 14, top: learnText.bottom + 15 } ) );
         const modelNote = new Text( 'Model note: cells use RNA messages between DNA instructions and ribosomes. Pathways here are simplified for learning.', {
           font: readableFont( 11 ), fill: '#5A6570', maxWidth: sideWidth - 28,
-          left: leftX + 14, top: learnText.bottom + 68
+          left: leftX + 14, top: learnText.bottom + 20
         } );
         leftContent.addChild( modelNote );
       }
@@ -913,23 +938,49 @@ class AnimalCellScreenView extends ScreenView {
       }
       else if ( panelMode === 'organelle' ) {
         const data = INFO[ model.selectedOrganelleProperty.value ];
-        addPanelTitle( rightContent, data.name, rightX, tabRow.bottom + 1 );
-        const details = [ 'Function: ' + data.job, 'Connects to: ' + data.connects, 'If reduced: ' + data.failure ];
-        let y = tabRow.bottom + 37;
-        details.forEach( text => {
-          const description = new Text( text, {
-            font: readableFont( 11 ), fill: '#294957', maxWidth: sideWidth - 26,
-            left: rightX + 13, top: y
+        rightContent.addChild( new Text( 'ORGANELLE DETAILS', {
+          font: readableBoldFont( 18 ), fill: '#125F7B', left: rightX + 13, top: tabRow.bottom + 13,
+          maxWidth: sideWidth - 26
+        } ) );
+        const organelleName = new Text( data.name.toUpperCase(), {
+          font: readableBoldFont( 18 ), fill: '#173A4A', left: rightX + 13, top: tabRow.bottom + 43,
+          maxWidth: sideWidth - 26
+        } );
+        rightContent.addChild( organelleName );
+        let y = organelleName.bottom + 12;
+        [ [ 'Function', data.job ], [ 'Works with', data.connects ], [ 'If function decreases', data.failure ] ].forEach( item => {
+          const label = new Text( item[ 0 ], {
+            font: readableBoldFont( 9 ), fill: '#125F7B', left: rightX + 13, top: y
           } );
+          const description = new Text( item[ 1 ], {
+            font: readableFont( 10 ), fill: '#294957', maxWidth: sideWidth - 26,
+            left: rightX + 13, top: label.bottom + 2
+          } );
+          rightContent.addChild( label );
           rightContent.addChild( description );
           y = description.bottom + 10;
         } );
-        rightContent.addChild( makeButton( 'Hear explanation', () => {
-          if ( window.speechSynthesis ) {
-            window.speechSynthesis.cancel();
-            window.speechSynthesis.speak( new SpeechSynthesisUtterance( data.name + '. ' + data.job + ' ' + data.connects ) );
-          }
-        }, '#A9E7C2', 11 ).mutate( { left: rightX + 13, top: y + 4 } ) );
+        const highlightButton = makeButton( 'Highlight pathway', () => {
+          model.pathwayHighlightProperty.value = data.pathway;
+        }, '#FFE3A5', 10 );
+        highlightButton.left = rightX + 13;
+        highlightButton.top = y + 2;
+        rightContent.addChild( highlightButton );
+        const testButton = makeButton( 'Test this organelle', () => {
+          model.resetToHealthyCell();
+          model.selectedVariableProperty.value = data.testVariable;
+          model.advancedExploreProperty.value = false;
+          model.experimentPanelProperty.value = 'controls';
+          model.modeProperty.value = 'explore';
+          model.startTrial();
+          model.rightPanelProperty.value = 'notebook';
+          trialPanelPage = 'design';
+          renderLeft();
+          renderRight();
+        }, '#BCEACB', 10 );
+        testButton.left = rightX + 13;
+        testButton.top = highlightButton.bottom + 6;
+        rightContent.addChild( testButton );
       }
       else if ( panelMode === 'notebook' ) {
         addPanelTitle( rightContent, 'Trial comparison', rightX, tabRow.bottom + 1 );
@@ -1144,6 +1195,11 @@ class AnimalCellScreenView extends ScreenView {
       membrane.lineWidth = membraneFocused ? 15 : 8 + model.stressProperty.value * 0.055;
       membrane.stroke = membraneFocused ? '#E28C00' : mixColor( '#54BFD7', '#CF5C4C', model.stressProperty.value / 100 );
     };
+    const updatePathwayHighlight = selectedPathway => {
+      Object.keys( pathwayOverlays ).forEach( pathway => {
+        pathwayOverlays[ pathway ].opacity = selectedPathway === pathway ? 0.8 : 0;
+      } );
+    };
     model.controlGroupProperty.link( () => renderLeft() );
     model.modeProperty.link( () => renderLeft() );
     model.rightPanelProperty.link( () => renderRight() );
@@ -1152,6 +1208,7 @@ class AnimalCellScreenView extends ScreenView {
       renderRight();
     } );
     model.focusEffectKeyProperty.link( updateOrganelleOutlines );
+    model.pathwayHighlightProperty.link( updatePathwayHighlight );
     model.enabledVariablesProperty.link( () => renderLeft() );
     model.enabledOrganellesProperty.link( enabled => {
       Object.keys( INFO ).forEach( key => {

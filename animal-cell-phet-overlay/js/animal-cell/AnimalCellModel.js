@@ -47,6 +47,7 @@ class AnimalCellModel {
   constructor() {
     this.modeProperty = new Property( 'learn' );
     this.selectedOrganelleProperty = new Property( 'nucleus' );
+    this.pathwayHighlightProperty = new Property( null );
     this.selectedVariableProperty = new Property( 'oxygen' );
     this.controlGroupProperty = new Property( 'environment' );
     this.experimentPanelProperty = new Property( 'question' );
@@ -465,6 +466,7 @@ class AnimalCellModel {
   reset() {
     this.modeProperty.value = 'learn';
     this.selectedOrganelleProperty.value = 'nucleus';
+    this.pathwayHighlightProperty.value = null;
     this.selectedVariableProperty.value = 'oxygen';
     this.trialLockedProperty.value = false;
     this.advancedExploreProperty.value = false;
