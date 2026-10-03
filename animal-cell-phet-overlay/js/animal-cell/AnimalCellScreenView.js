@@ -204,6 +204,7 @@ class AnimalCellScreenView extends ScreenView {
     } ) );
 
     const modeItems = [
+      [ 'Cell Survival', 'project', '#BCEACB' ],
       [ 'Learn', 'learn', '#61D1EA' ],
       [ 'Explore', 'explore', '#8DD7F1' ],
       [ 'What Happens If?', 'whatif', '#FFB5D9' ],
@@ -212,6 +213,28 @@ class AnimalCellScreenView extends ScreenView {
     const modeButtons = modeItems.map( item => new RectangularPushButton( {
       content: new Text( item[ 0 ], { font: readableFont( 17 ) } ),
       baseColor: item[ 2 ], listener: () => {
+        if ( item[ 1 ] === 'project' ) {
+          if ( !model.projectActiveProperty.value ) {
+            model.startProjectCase( model.projectCaseProperty.value.id );
+          }
+          else {
+            model.modeProperty.value = 'project';
+          }
+          model.rightPanelProperty.value = 'project';
+          renderLeft();
+          renderRight();
+          return;
+        }
+        if ( item[ 1 ] === 'challenge' && model.projectActiveProperty.value && !model.projectMilestonesProperty.value[ 5 ] ) {
+          model.feedbackProperty.value = 'Use the required trials and compare evidence to make a diagnosis before testing the rescue plan.';
+          model.projectPageProperty.value = 'notebook';
+          model.projectNotebookPageProperty.value = 2;
+          model.modeProperty.value = 'project';
+          model.rightPanelProperty.value = 'project';
+          renderLeft();
+          renderRight();
+          return;
+        }
         model.modeProperty.value = item[ 1 ];
         if ( item[ 1 ] === 'challenge' && !model.challengeProperty.value ) {
           model.startRescueChallenge();
@@ -229,8 +252,14 @@ class AnimalCellScreenView extends ScreenView {
           variableMenuOpen = false;
           model.advancedExploreProperty.value = false;
           advancedTrialSaved = false;
-          model.resetToHealthyCell();
-          model.startTrial();
+          if ( model.projectActiveProperty.value ) {
+            model.completeProjectMilestone( 0 );
+            model.startProjectExperiment();
+          }
+          else {
+            model.resetToHealthyCell();
+            model.startTrial();
+          }
           model.rightPanelProperty.value = 'data';
           renderLeft();
         }
@@ -264,11 +293,17 @@ class AnimalCellScreenView extends ScreenView {
       model.pathwayHighlightProperty.value = null;
       model.selectedOrganelleProperty.value = 'membrane';
       model.rightPanelProperty.value = 'organelle';
+      if ( model.projectActiveProperty.value ) {
+        model.completeProjectMilestone( 1 );
+      }
     } } ) );
     cytoplasm.addInputListener( new FireListener( { fire: () => {
       model.pathwayHighlightProperty.value = null;
       model.selectedOrganelleProperty.value = 'cytoplasm';
       model.rightPanelProperty.value = 'organelle';
+      if ( model.projectActiveProperty.value ) {
+        model.completeProjectMilestone( 1 );
+      }
     } } ) );
     cellRoot.addChild( membrane );
     cellRoot.addChild( cytoplasm );
@@ -374,6 +409,9 @@ class AnimalCellScreenView extends ScreenView {
         model.pathwayHighlightProperty.value = null;
         model.selectedOrganelleProperty.value = key;
         model.rightPanelProperty.value = 'organelle';
+        if ( model.projectActiveProperty.value ) {
+          model.completeProjectMilestone( 1 );
+        }
       } } ) );
       organelleNodes[ key ] = node;
       organelleShapes[ key ] = parts.filter( part => part.stroke !== null );
@@ -448,6 +486,17 @@ class AnimalCellScreenView extends ScreenView {
     let whatifStep = 2;
     let advancedTrialSaved = false;
     let showMoreData = false;
+    let projectPanelPage = 0;
+    let projectCERFieldIndex = 0;
+    const startFreshExploreTrial = () => {
+      if ( model.projectActiveProperty.value ) {
+        model.startProjectExperiment();
+      }
+      else {
+        model.resetToHealthyCell();
+        model.startTrial();
+      }
+    };
     const runCurrentTrial = () => {
       const startingSettings = model.trialStartSettingsProperty.value || {};
       const changedInputs = Object.keys( startingSettings ).filter( key => model.variables[ key ].value !== startingSettings[ key ] );
@@ -468,6 +517,9 @@ class AnimalCellScreenView extends ScreenView {
                                              definition.key === 'water' || definition.key === 'permeability' ? 'transport' : 'protein';
       model.trialLockedProperty.value = true;
       exploreStep = 5;
+      if ( model.projectActiveProperty.value ) {
+        model.completeProjectMilestone( 2 );
+      }
     };
 
     const makeButton = ( label, listener, color = '#DDF3FA', size = 12, maxWidth = sideWidth - 26 ) => new RectangularPushButton( {
@@ -482,8 +534,328 @@ class AnimalCellScreenView extends ScreenView {
     const renderLeft = () => {
       leftContent.removeAllChildren();
       const mode = model.modeProperty.value;
-      const titleText = mode === 'whatif' ? 'Experiment lab' : mode === 'challenge' ? 'Rescue the Cell' : mode === 'explore' ? 'Explore & test' : 'Cell Parts';
+      const titleText = mode === 'project' ? 'Cell Survival Challenge' : mode === 'whatif' ? 'Experiment lab' : mode === 'challenge' ? 'Rescue the Cell' : mode === 'explore' ? 'Explore & test' : 'Cell Parts';
       addPanelTitle( leftContent, titleText, leftX, panelTop );
+      if ( mode === 'project' ) {
+        const projectCase = model.projectCaseProperty.value;
+        const milestones = model.projectMilestonesProperty.value;
+        const openProjectNotebook = () => {
+          model.projectPageProperty.value = 'notebook';
+          model.rightPanelProperty.value = 'project';
+          renderLeft();
+          renderRight();
+        };
+        const projectPageLabel = model.projectPageProperty.value === 'launch' ? 'PHASE 1 · LAUNCH THE PROBLEM' :
+                                 model.projectPageProperty.value === 'investigate' ? 'PHASES 2–5 · INVESTIGATE & ANALYZE' :
+                                 model.projectPageProperty.value === 'rescue' ? 'PHASES 6–7 · RESCUE & TEST' :
+                                 model.projectPageProperty.value === 'product' ? 'PHASES 8–9 · PRODUCT & DEFENSE' : 'PROJECT NOTEBOOK';
+        const pageHeading = new Text( projectPageLabel, {
+          font: readableBoldFont( 9 ), fill: '#125F7B', left: leftX + 14, top: panelTop + 46,
+          maxWidth: sideWidth - 28
+        } );
+        leftContent.addChild( pageHeading );
+
+        if ( model.projectPageProperty.value === 'launch' ) {
+          const caseIndex = AnimalCellModel.PROJECT_CASES.findIndex( item => item.id === projectCase.id );
+          const caseButton = makeButton( 'MYSTERY CASE  ·  ' + projectCase.title + '  ▸', () => {
+            const nextCase = AnimalCellModel.PROJECT_CASES[ ( caseIndex + 1 ) % AnimalCellModel.PROJECT_CASES.length ];
+            model.startProjectCase( nextCase.id );
+            model.rightPanelProperty.value = 'project';
+            renderLeft();
+            renderRight();
+          }, '#EAF5F8', 9 );
+          caseButton.left = leftX + 14;
+          caseButton.top = pageHeading.bottom + 8;
+          leftContent.addChild( caseButton );
+          const drivingQuestion = new Text( 'DRIVING QUESTION\nHow can we keep an animal cell functioning when one part of its system fails?', {
+            font: readableBoldFont( 9 ), fill: '#294957', left: leftX + 14,
+            top: caseButton.bottom + 7, maxWidth: sideWidth - 28
+          } );
+          leftContent.addChild( drivingQuestion );
+          const symptoms = new Text( 'CELL RESPONSE TEAM · CASE SYMPTOMS\n' + projectCase.symptoms, {
+            font: readableFont( 8 ), fill: '#7A4827', left: leftX + 14,
+            top: drivingQuestion.bottom + 7, maxWidth: sideWidth - 28
+          } );
+          leftContent.addChild( symptoms );
+          const knowButton = makeButton( 'WHAT WE KNOW  ·  ' + model.projectKnowProperty.value, () => {
+            model.cycleProjectNote( 'know' );
+            renderLeft();
+          }, '#EAF5F8', 8 );
+          knowButton.left = leftX + 14;
+          knowButton.top = symptoms.bottom + 7;
+          leftContent.addChild( knowButton );
+          const needButton = makeButton( 'WHAT WE NEED TO KNOW  ·  ' + model.projectNeedProperty.value, () => {
+            model.cycleProjectNote( 'need' );
+            renderLeft();
+          }, '#EAF5F8', 8 );
+          needButton.left = leftX + 14;
+          needButton.top = knowButton.bottom + 5;
+          leftContent.addChild( needButton );
+          const startButton = makeButton( 'BEGIN THE INVESTIGATION', () => {
+            model.projectPageProperty.value = 'investigate';
+            model.completeProjectMilestone( 0 );
+            renderLeft();
+          }, '#BCEACB', 9 );
+          startButton.left = leftX + 14;
+          startButton.bottom = panelTop + panelHeight - 8;
+          leftContent.addChild( startButton );
+        }
+        else if ( model.projectPageProperty.value === 'investigate' ) {
+          const milestoneIndex = milestones.findIndex( completed => !completed );
+          const milestoneNames = [ 'Understand the problem', 'Ask testable questions', 'Run first experiment', 'Collect required trials', 'Compare evidence', 'Propose diagnosis', 'Test rescue plan', 'Create final product', 'Present and defend' ];
+          const progress = new Text( 'PROJECT MILESTONE  ·  ' + ( milestoneIndex < 0 ? 'ALL COMPLETE' : ( milestoneIndex + 1 ) + ' OF 9 · ' + milestoneNames[ milestoneIndex ] ) +
+                                     '\nCompleted: ' + milestones.filter( Boolean ).length + ' / 9', {
+            font: readableBoldFont( 9 ), fill: '#294957', left: leftX + 14, top: pageHeading.bottom + 10,
+            maxWidth: sideWidth - 28
+          } );
+          leftContent.addChild( progress );
+          const roleRotation = model.projectRoleRotationProperty.value;
+          const roleLines = AnimalCellModel.PROJECT_ROLES.map( ( role, index ) => role + '  ·  Member ' + ( ( index + roleRotation ) % AnimalCellModel.PROJECT_ROLES.length + 1 ) ).join( '\n' );
+          const roles = new Text( 'CELL RESPONSE TEAM  ·  ROTATE ROLES\n' + roleLines, {
+            font: readableFont( 8 ), fill: '#294957', left: leftX + 14, top: progress.bottom + 9,
+            maxWidth: sideWidth - 28
+          } );
+          leftContent.addChild( roles );
+          const rotateRoles = makeButton( 'ROTATE TEAM ROLES', () => {
+            model.projectRoleRotationProperty.value = ( roleRotation + 1 ) % AnimalCellModel.PROJECT_ROLES.length;
+            renderLeft();
+          }, '#EAF5F8', 8 );
+          rotateRoles.left = leftX + 14;
+          rotateRoles.top = roles.bottom + 5;
+          leftContent.addChild( rotateRoles );
+          const partsButton = makeButton( 'INSPECT CELL PARTS', () => {
+            model.modeProperty.value = 'learn';
+            model.completeProjectMilestone( 0 );
+            model.rightPanelProperty.value = 'organelle';
+            renderLeft();
+            renderRight();
+          }, '#DDF3FA', 9 );
+          partsButton.left = leftX + 14;
+          partsButton.top = rotateRoles.bottom + 7;
+          leftContent.addChild( partsButton );
+          const exploreButton = makeButton( 'OPEN EXPERIMENT LAB', () => {
+            model.modeProperty.value = 'explore';
+            model.experimentPanelProperty.value = 'controls';
+            model.startProjectExperiment();
+            exploreStep = 1;
+            model.rightPanelProperty.value = 'data';
+            renderLeft();
+            renderRight();
+          }, '#DDF3FA', 9 );
+          exploreButton.left = leftX + 14;
+          exploreButton.top = partsButton.bottom + 5;
+          leftContent.addChild( exploreButton );
+          const notebookButton = makeButton( 'OPEN PROJECT NOTEBOOK', openProjectNotebook, '#FFE8A3', 9 );
+          notebookButton.left = leftX + 14;
+          notebookButton.top = exploreButton.bottom + 5;
+          leftContent.addChild( notebookButton );
+          const trialStatus = new Text( 'Trials saved: ' + model.trialsProperty.value.length + ' / ' + model.requiredTrialsProperty.value +
+                                       '\nSelect Project on the right to review evidence and teacher settings.', {
+            font: readableFont( 8 ), fill: '#315C48', left: leftX + 14,
+            top: notebookButton.bottom + 6, maxWidth: sideWidth - 28
+          } );
+          leftContent.addChild( trialStatus );
+          const rescueButton = makeButton( milestones[ 5 ] ? 'TEST THE RESCUE PLAN' : 'RESCUE UNLOCKS AFTER EVIDENCE', () => {
+            if ( milestones[ 5 ] ) {
+              model.projectPageProperty.value = 'rescue';
+              model.modeProperty.value = 'challenge';
+              model.startRescueChallenge();
+              model.rightPanelProperty.value = 'data';
+              renderLeft();
+            }
+          }, '#FFE080', 8 );
+          rescueButton.left = leftX + 14;
+          rescueButton.bottom = panelTop + panelHeight - 8;
+          rescueButton.enabled = milestones[ 5 ];
+          leftContent.addChild( rescueButton );
+        }
+        else if ( model.projectPageProperty.value === 'notebook' ) {
+        const notebookPages = [ 'Know / Need / Hypothesis', 'Trials / Patterns', 'Diagnosis / Rescue plan', 'CER / Reflection' ];
+          const pageIndex = model.projectNotebookPageProperty.value;
+          const pageButton = makeButton( 'NOTEBOOK PAGE  ·  ' + notebookPages[ pageIndex ] + '  ▸', () => {
+            model.projectNotebookPageProperty.value = ( pageIndex + 1 ) % notebookPages.length;
+            renderLeft();
+          }, '#EAF5F8', 8 );
+          pageButton.left = leftX + 14;
+          pageButton.top = pageHeading.bottom + 8;
+          leftContent.addChild( pageButton );
+          const addNotebookEntry = ( label, property, key, y ) => {
+            const entry = makeButton( label + '  ·  ' + property.value, () => {
+              model.cycleProjectNote( key );
+              renderLeft();
+            }, '#F3F8FA', 8 );
+            entry.left = leftX + 14;
+            entry.top = y;
+            leftContent.addChild( entry );
+            return entry;
+          };
+          let entryBottom = pageButton.bottom;
+          if ( pageIndex === 0 ) {
+            entryBottom = addNotebookEntry( 'WHAT WE KNOW', model.projectKnowProperty, 'know', entryBottom + 8 ).bottom;
+            entryBottom = addNotebookEntry( 'WHAT WE NEED TO KNOW', model.projectNeedProperty, 'need', entryBottom + 6 ).bottom;
+            entryBottom = addNotebookEntry( 'HYPOTHESIS', model.projectHypothesisProperty, 'hypothesis', entryBottom + 6 ).bottom;
+          }
+          else if ( pageIndex === 1 ) {
+            const trialCount = new Text( 'EXPERIMENTS  ·  ' + model.trialsProperty.value.length + ' / ' + model.requiredTrialsProperty.value + ' trials saved\nIndependent variable, before → after output, health, and observations are in Trials.', {
+              font: readableFont( 8 ), fill: '#294957', left: leftX + 14, top: entryBottom + 8,
+              maxWidth: sideWidth - 28
+            } );
+            leftContent.addChild( trialCount );
+            entryBottom = addNotebookEntry( 'PATTERNS I NOTICE', model.projectPatternsProperty, 'patterns', trialCount.bottom + 8 ).bottom;
+            const trialsButton = makeButton( 'REVIEW SAVED TRIALS', () => {
+              model.rightPanelProperty.value = 'notebook';
+              renderRight();
+            }, '#DDF3FA', 8 );
+            trialsButton.left = leftX + 14;
+            trialsButton.top = entryBottom + 8;
+            leftContent.addChild( trialsButton );
+          }
+          else if ( pageIndex === 2 ) {
+            const evidenceGate = new Text( model.trialsProperty.value.length >= model.requiredTrialsProperty.value ?
+                                           'Evidence requirement met. Compare two trials before finalizing a diagnosis.' :
+                                           'Save at least ' + model.requiredTrialsProperty.value + ' trials before choosing a diagnosis.', {
+              font: readableBoldFont( 8 ), fill: '#7A4827', left: leftX + 14, top: entryBottom + 8,
+              maxWidth: sideWidth - 28
+            } );
+            leftContent.addChild( evidenceGate );
+            const diagnosis = makeButton( 'CURRENT DIAGNOSIS  ·  ' + model.projectDiagnosisProperty.value, () => {
+              if ( model.trialsProperty.value.length >= model.requiredTrialsProperty.value && milestones[ 4 ] ) {
+                model.cycleProjectNote( 'diagnosis' );
+              }
+              else {
+                model.feedbackProperty.value = 'Save the required trials and compare at least two before naming a likely failing system.';
+              }
+              renderLeft();
+            }, '#F3F8FA', 8 );
+            diagnosis.left = leftX + 14;
+            diagnosis.top = evidenceGate.bottom + 7;
+            diagnosis.enabled = model.trialsProperty.value.length >= model.requiredTrialsProperty.value && milestones[ 4 ];
+            leftContent.addChild( diagnosis );
+            entryBottom = addNotebookEntry( 'RESCUE PLAN', model.projectRescuePlanProperty, 'rescuePlan', diagnosis.bottom + 7 ).bottom;
+          }
+          else {
+            const fields = [
+              [ 'CLAIM', model.cerClaimProperty.value, () => model.cycleCER( 'claim' ) ],
+              [ 'EVIDENCE', model.cerEvidenceProperty.value, () => model.cycleCER( 'evidence' ) ],
+              [ 'REASONING', model.cerReasoningProperty.value, () => model.cycleCER( 'reasoning' ) ],
+              [ 'CONCLUSION', model.projectConclusionProperty.value, () => model.cycleProjectNote( 'conclusion' ) ],
+              [ 'REFLECTION', model.projectReflectionProperty.value, () => model.cycleProjectNote( 'reflection' ) ]
+            ];
+            const field = fields[ projectCERFieldIndex ];
+            const fieldButton = makeButton( 'NOTEBOOK FIELD  ·  ' + field[ 0 ] + '  ▸', () => {
+              projectCERFieldIndex = ( projectCERFieldIndex + 1 ) % fields.length;
+              renderLeft();
+            }, '#DDF3FA', 9 );
+            fieldButton.left = leftX + 14;
+            fieldButton.top = entryBottom + 8;
+            leftContent.addChild( fieldButton );
+            const fieldValue = new Text( field[ 1 ], {
+              font: readableFont( 9 ), fill: '#294957', left: leftX + 14,
+              top: fieldButton.bottom + 8, maxWidth: sideWidth - 28
+            } );
+            leftContent.addChild( fieldValue );
+            const editField = makeButton( 'EDIT THIS ENTRY', () => {
+              field[ 2 ]();
+              renderLeft();
+            }, '#EAF5F8', 9 );
+            editField.left = leftX + 14;
+            editField.top = fieldValue.bottom + 8;
+            leftContent.addChild( editField );
+            const createProduct = makeButton( 'CREATE FINAL PRODUCT', () => {
+              if ( model.createProjectProduct() ) {
+                model.projectPageProperty.value = 'product';
+                model.rightPanelProperty.value = 'project';
+              }
+              renderLeft();
+              renderRight();
+            }, '#BCEACB', 9 );
+            createProduct.left = leftX + 14;
+            createProduct.top = editField.bottom + 8;
+            createProduct.enabled = model.trialsProperty.value.length >= model.requiredTrialsProperty.value && milestones[ 4 ] && milestones[ 5 ] && milestones[ 6 ];
+            leftContent.addChild( createProduct );
+          }
+          const backToProject = makeButton( 'BACK TO PROJECT MILESTONES', () => {
+            model.projectPageProperty.value = 'investigate';
+            renderLeft();
+          }, '#EAF5F8', 8 );
+          backToProject.left = leftX + 14;
+          backToProject.bottom = panelTop + panelHeight - 8;
+          leftContent.addChild( backToProject );
+        }
+        else if ( model.projectPageProperty.value === 'rescue' ) {
+          const rescueMessage = new Text( milestones[ 6 ] ? 'The cell met its rescue target. Explain which evidence shows recovery.' : 'The rescue is in the lab. Test the repair, wait for gradual response, and compare the live data.', {
+            font: readableBoldFont( 9 ), fill: '#294957', left: leftX + 14, top: pageHeading.bottom + 10,
+            maxWidth: sideWidth - 28
+          } );
+          leftContent.addChild( rescueMessage );
+          const evidenceButton = makeButton( 'OPEN LIVE DATA', () => {
+            model.rightPanelProperty.value = 'data';
+            renderRight();
+          }, '#DDF3FA', 9 );
+          evidenceButton.left = leftX + 14;
+          evidenceButton.top = rescueMessage.bottom + 12;
+          leftContent.addChild( evidenceButton );
+          const notebookButton = makeButton( 'OPEN PROJECT NOTEBOOK', openProjectNotebook, '#FFE8A3', 9 );
+          notebookButton.left = leftX + 14;
+          notebookButton.top = evidenceButton.bottom + 7;
+          leftContent.addChild( notebookButton );
+          const rescueReturnButton = makeButton( milestones[ 6 ] ? 'RESCUE TEST COMPLETE ✓' : 'RETURN TO RESCUE LAB', () => {
+            model.modeProperty.value = 'challenge';
+            model.experimentPanelProperty.value = 'controls';
+            renderLeft();
+          }, '#FFE080', 9 );
+          rescueReturnButton.left = leftX + 14;
+          rescueReturnButton.bottom = panelTop + panelHeight - 8;
+          rescueReturnButton.enabled = !milestones[ 6 ];
+          leftContent.addChild( rescueReturnButton );
+        }
+        else {
+          const productTitle = new Text( 'FINAL PRODUCT  ·  ' + model.projectProductProperty.value, {
+            font: readableBoldFont( 10 ), fill: '#294957', left: leftX + 14, top: pageHeading.bottom + 10,
+            maxWidth: sideWidth - 28
+          } );
+          leftContent.addChild( productTitle );
+          const productChoice = makeButton( 'CHOOSE A DIFFERENT PRODUCT', () => {
+            const products = AnimalCellModel.PROJECT_PRODUCTS;
+            const productIndex = products.indexOf( model.projectProductProperty.value );
+            model.projectProductProperty.value = products[ ( productIndex + 1 ) % products.length ];
+            renderLeft();
+          }, '#EAF5F8', 8 );
+          productChoice.left = leftX + 14;
+          productChoice.top = productTitle.bottom + 7;
+          leftContent.addChild( productChoice );
+          const conclusionButton = makeButton( 'EDIT EVIDENCE-BASED CONCLUSION', () => {
+            model.cycleProjectNote( 'conclusion' );
+            renderLeft();
+          }, '#EAF5F8', 8 );
+          conclusionButton.left = leftX + 14;
+          conclusionButton.top = productChoice.bottom + 6;
+          leftContent.addChild( conclusionButton );
+          const createButton = makeButton( 'CREATE FINAL PRODUCT', () => {
+            if ( model.createProjectProduct() ) {
+              model.rightPanelProperty.value = 'project';
+            }
+            renderLeft();
+            renderRight();
+          }, '#BCEACB', 9 );
+          createButton.left = leftX + 14;
+          createButton.top = conclusionButton.bottom + 6;
+          createButton.enabled = model.trialsProperty.value.length >= model.requiredTrialsProperty.value && milestones[ 4 ] && milestones[ 5 ] && milestones[ 6 ] &&
+                                model.cerEvidenceProperty.value !== 'Use the before-and-after values as evidence.' &&
+                                model.cerReasoningProperty.value !== 'The changed process is connected to the output I measured.';
+          leftContent.addChild( createButton );
+          const defendButton = makeButton( milestones[ 8 ] ? 'PROJECT DEFENDED ✓' : 'PRESENT AND DEFEND', () => {
+            model.defendProject();
+            renderLeft();
+            renderRight();
+          }, '#FFE080', 9 );
+          defendButton.left = leftX + 14;
+          defendButton.bottom = panelTop + panelHeight - 8;
+          defendButton.enabled = milestones[ 7 ];
+          leftContent.addChild( defendButton );
+        }
+        return;
+      }
       if ( mode === 'explore' ) {
         const exploreKeys = [ 'oxygen', 'glucose', 'water', 'ph', 'temperature', 'mitochondria', 'ribosomes', 'golgi', 'lysosomes', 'permeability' ];
         const currentDefinition = AnimalCellModel.VARIABLE_DEFINITIONS.find( item => item.key === model.selectedVariableProperty.value ) || AnimalCellModel.VARIABLE_DEFINITIONS[ 0 ];
@@ -492,8 +864,7 @@ class AnimalCellScreenView extends ScreenView {
           const advancedButton = makeButton( 'BACK TO ONE-VARIABLE TEST', () => {
             model.advancedExploreProperty.value = false;
             advancedTrialSaved = false;
-            model.resetToHealthyCell();
-            model.startTrial();
+            startFreshExploreTrial();
             exploreStep = 1;
             renderLeft();
           }, '#EAF5F8', 10 );
@@ -504,8 +875,7 @@ class AnimalCellScreenView extends ScreenView {
           const runButton = makeButton( advancedActionLabel, () => {
             if ( model.trialLockedProperty.value ) {
               if ( advancedTrialSaved ) {
-                model.resetToHealthyCell();
-                model.startTrial();
+                startFreshExploreTrial();
                 advancedTrialSaved = false;
                 model.rightPanelProperty.value = 'data';
               }
@@ -551,8 +921,7 @@ class AnimalCellScreenView extends ScreenView {
             AnimalCellModel.VARIABLE_DEFINITIONS.filter( definition => exploreKeys.includes( definition.key ) ).forEach( ( definition, index ) => {
               const option = makeButton( definition.label, () => {
                 model.selectedVariableProperty.value = definition.key;
-                model.resetToHealthyCell();
-                model.startTrial();
+                startFreshExploreTrial();
                 exploreStep = 1;
                 variableMenuOpen = false;
                 renderLeft();
@@ -615,8 +984,7 @@ class AnimalCellScreenView extends ScreenView {
                             exploreStep === 5 ? 'CONTINUE: READ DATA' : exploreStep === 6 ? 'CONTINUE: COMPARE' : exploreStep === 7 ? 'CONTINUE: EXPLAIN' : 'RUN EXPERIMENT';
           const runButton = makeButton( nextLabel, () => {
             if ( exploreStep === 9 ) {
-              model.resetToHealthyCell();
-              model.startTrial();
+              startFreshExploreTrial();
               exploreStep = 1;
               trialPanelPage = 'design';
               renderLeft();
@@ -1190,13 +1558,156 @@ class AnimalCellScreenView extends ScreenView {
       property.lazyLink( listener );
       rightPanelUnlinks.push( () => property.unlink( listener ) );
     };
+    const renderProjectPanel = ( root, tabRow ) => {
+      const projectCase = model.projectCaseProperty.value;
+      const milestones = model.projectMilestonesProperty.value;
+      const milestoneNames = [ 'Understand the problem', 'Ask testable questions', 'Run first experiment', 'Collect at least three trials', 'Identify evidence patterns', 'Propose a diagnosis', 'Test the rescue plan', 'Create final product', 'Present and defend' ];
+      const sections = [ 'Milestones', 'Team & teacher setup', 'Trial evidence', 'CER report', 'Conclusion & print', 'Assessment rubric' ];
+      const sectionButton = makeButton( 'PROJECT NOTEBOOK  ·  ' + sections[ projectPanelPage ] + '  ▸', () => {
+        projectPanelPage = ( projectPanelPage + 1 ) % sections.length;
+        renderRight();
+      }, '#EAF5F8', 8 );
+      sectionButton.left = rightX + 13;
+      sectionButton.top = tabRow.bottom + 7;
+      root.addChild( sectionButton );
+      let y = sectionButton.bottom + 8;
+      const addProjectText = ( text, font, color = '#294957', maxWidth = sideWidth - 26 ) => {
+        const entry = new Text( text, { font: font, fill: color, left: rightX + 13, top: y, maxWidth: maxWidth } );
+        root.addChild( entry );
+        y = entry.bottom + 5;
+        return entry;
+      };
+      const addProjectButton = ( text, listener, color = '#EAF5F8' ) => {
+        const button = makeButton( text, listener, color, 8 );
+        button.left = rightX + 13;
+        button.top = y;
+        root.addChild( button );
+        y = button.bottom + 5;
+        return button;
+      };
+
+      if ( projectPanelPage === 0 ) {
+        addProjectText( 'CELL SURVIVAL CHALLENGE\n' + projectCase.title + '\n' + projectCase.symptoms, readableBoldFont( 8 ), '#294957' );
+        milestoneNames.forEach( ( name, index ) => {
+          addProjectText( ( milestones[ index ] ? '✓  ' : '○  ' ) + ( index + 1 ) + '. ' + name, readableFont( 8 ), milestones[ index ] ? '#235B3D' : '#526A73' );
+        } );
+      }
+      else if ( projectPanelPage === 1 ) {
+        const roleRotation = model.projectRoleRotationProperty.value;
+        addProjectText( 'CELL RESPONSE TEAM · ROTATING ROLES', readableBoldFont( 8 ), '#125F7B' );
+        AnimalCellModel.PROJECT_ROLES.forEach( ( role, index ) => {
+          addProjectText( role + '  ·  Member ' + ( ( index + roleRotation ) % AnimalCellModel.PROJECT_ROLES.length + 1 ), readableFont( 8 ) );
+        } );
+        addProjectButton( 'ROTATE GROUP ROLES', () => {
+          model.projectRoleRotationProperty.value = ( roleRotation + 1 ) % AnimalCellModel.PROJECT_ROLES.length;
+          renderRight();
+        } );
+        addProjectButton( 'TEACHER MODE  ·  ' + ( model.teacherModeProperty.value ? 'ON' : 'OFF' ), () => {
+          model.teacherModeProperty.value = !model.teacherModeProperty.value;
+          renderRight();
+        }, model.teacherModeProperty.value ? '#FFE080' : '#EAF5F8' );
+        if ( !model.teacherModeProperty.value ) {
+          addProjectText( 'Teacher setup is available when Teacher Mode is on. Student evidence and milestone status remain visible in this notebook.', readableFont( 8 ) );
+          return;
+        }
+        addProjectButton( 'REQUIRED TRIALS  ·  ' + model.requiredTrialsProperty.value + '  ▸', () => {
+          model.requiredTrialsProperty.value = model.requiredTrialsProperty.value >= 5 ? 3 : model.requiredTrialsProperty.value + 1;
+          renderRight();
+        } );
+        addProjectButton( 'FINAL PRODUCT  ·  ' + model.projectProductProperty.value + '  ▸', () => {
+          const products = AnimalCellModel.PROJECT_PRODUCTS;
+          const productIndex = products.indexOf( model.projectProductProperty.value );
+          model.projectProductProperty.value = products[ ( productIndex + 1 ) % products.length ];
+          renderRight();
+        } );
+        addProjectButton( 'SUPPORT  ·  ' + model.projectScaffoldingProperty.value + '  ▸', () => {
+          const levels = [ 'Guided inquiry', 'Supported inquiry', 'Open inquiry' ];
+          const levelIndex = levels.indexOf( model.projectScaffoldingProperty.value );
+          model.projectScaffoldingProperty.value = levels[ ( levelIndex + 1 ) % levels.length ];
+          model.supportLevelProperty.value = model.projectScaffoldingProperty.value;
+          renderRight();
+        } );
+        addProjectButton( 'HINTS  ·  ' + ( model.hintsEnabledProperty.value ? 'ON' : 'OFF' ), () => {
+          model.hintsEnabledProperty.value = !model.hintsEnabledProperty.value;
+          renderRight();
+        } );
+        const criteria = AnimalCellModel.PROJECT_SUCCESS_CRITERIA;
+        const criteriaIndex = criteria.indexOf( model.projectSuccessCriteriaProperty.value );
+        addProjectButton( 'SUCCESS CRITERIA  ·  ' + model.projectSuccessCriteriaProperty.value + '  ▸', () => {
+          model.projectSuccessCriteriaProperty.value = criteria[ ( criteriaIndex + 1 ) % criteria.length ];
+          renderRight();
+        } );
+        addProjectButton( 'START A NEW CASE · CLEARS EVIDENCE', () => {
+          const cases = AnimalCellModel.PROJECT_CASES;
+          const caseIndex = cases.findIndex( item => item.id === projectCase.id );
+          model.startProjectCase( cases[ ( caseIndex + 1 ) % cases.length ].id );
+          renderLeft();
+          renderRight();
+        }, '#FFE8A3' );
+      }
+      else if ( projectPanelPage === 2 ) {
+        const trials = model.trialsProperty.value;
+        trials.slice( -3 ).forEach( trial => {
+          addProjectText( '#' + trial.number + ' · ' + conciseVariableName( trial.independentVariableKey ) + ' ' + inputDisplayValue( trial.independentVariableKey, trial.value ) +
+                          ' · ' + roundSymmetric( trial.before ) + '→' + roundSymmetric( trial.result ) + ' · Health ' + roundSymmetric( trial.cellHealth ) + '%', readableFont( 8 ) );
+        } );
+        addProjectText( 'Before / after, ATP, protein, waste, and health are saved in the Trials tab. Live graph trends are in Graphs.', readableFont( 8 ) );
+      }
+      else if ( projectPanelPage === 3 ) {
+        addProjectText( model.projectProductProperty.value.toUpperCase() + '  ·  ' + projectCase.title, readableBoldFont( 8 ), '#125F7B' );
+        addProjectText( 'Problem: ' + projectCase.symptoms, readableFont( 8 ) );
+        addProjectText( 'Diagnosis: ' + model.projectDiagnosisProperty.value, readableFont( 8 ) );
+        addProjectText( 'Rescue plan: ' + model.projectRescuePlanProperty.value, readableFont( 8 ) );
+        addProjectText( 'CLAIM: ' + model.cerClaimProperty.value, readableFont( 8 ) );
+        addProjectText( 'EVIDENCE: ' + model.cerEvidenceProperty.value, readableFont( 8 ) );
+        addProjectText( 'REASONING: ' + model.cerReasoningProperty.value, readableFont( 8 ) );
+      }
+      else if ( projectPanelPage === 4 ) {
+        addProjectText( model.projectProductProperty.value.toUpperCase() + '  ·  ' + projectCase.title, readableBoldFont( 8 ), '#125F7B' );
+        addProjectText( 'Diagnosis: ' + model.projectDiagnosisProperty.value, readableFont( 8 ) );
+        addProjectText( 'CLAIM: ' + model.cerClaimProperty.value, readableFont( 8 ) );
+        addProjectText( 'EVIDENCE: ' + model.cerEvidenceProperty.value, readableFont( 8 ) );
+        addProjectText( 'REASONING: ' + model.cerReasoningProperty.value, readableFont( 8 ) );
+        addProjectText( 'SAVED TRIAL EVIDENCE', readableBoldFont( 8 ), '#125F7B' );
+        model.trialsProperty.value.slice( -5 ).forEach( trial => {
+          addProjectText( '#' + trial.number + ' · ' + conciseVariableName( trial.independentVariableKey ) + ' ' + inputDisplayValue( trial.independentVariableKey, trial.value ) +
+                          ' · ' + roundSymmetric( trial.before ) + '→' + roundSymmetric( trial.result ) +
+                          ' · ATP ' + roundSymmetric( trial.atp ) + ' · Protein ' + roundSymmetric( trial.protein ) +
+                          ' · Waste ' + roundSymmetric( trial.waste ) + ' · Health ' + roundSymmetric( trial.cellHealth ), readableFont( 8 ) );
+        } );
+        addProjectText( 'CONCLUSION', readableBoldFont( 8 ), '#125F7B' );
+        addProjectText( model.projectConclusionProperty.value, readableFont( 8 ) );
+        addProjectText( 'REFLECTION', readableBoldFont( 8 ), '#125F7B' );
+        addProjectText( model.projectReflectionProperty.value, readableFont( 8 ) );
+        addProjectButton( 'PRINT / SAVE AS PDF', () => window.print(), '#BCEACB' );
+      }
+      else {
+        addProjectText( 'ASSESSMENT RUBRIC · evidence of learning', readableBoldFont( 8 ), '#125F7B' );
+        const criteria = [
+          [ 'Scientific understanding', milestones[ 1 ] ],
+          [ 'Fair experiment design', milestones[ 2 ] && milestones[ 3 ] ],
+          [ 'Use of trial data', milestones[ 3 ] && milestones[ 4 ] ],
+          [ 'Systems thinking / CER', milestones[ 5 ] ],
+          [ 'Evidence-based rescue', milestones[ 6 ] ],
+          [ 'Clear final communication', milestones[ 7 ] ],
+          [ 'Reflection and revision', milestones[ 8 ] ]
+        ];
+        criteria.forEach( item => addProjectText( ( item[ 1 ] ? '✓  ' : '○  ' ) + item[ 0 ], readableFont( 8 ), item[ 1 ] ? '#235B3D' : '#526A73' ) );
+        addProjectText( 'Rubric evidence is based on investigations and the final product—not a multiple-choice score.', readableFont( 8 ) );
+        addProjectButton( 'OPEN NOTEBOOK / CER', () => {
+          model.projectPageProperty.value = 'notebook';
+          model.modeProperty.value = 'project';
+          renderLeft();
+        } );
+      }
+    };
     const renderRight = () => {
       rightPanelUnlinks.forEach( unlink => unlink() );
       rightPanelUnlinks = [];
       rightContent.removeAllChildren();
-      const tabs = [
-        [ 'Data', 'data' ], [ 'Graphs', 'graphs' ], [ 'Trials', 'notebook' ], [ 'Teacher', 'teacher' ]
-      ].map( item => makeButton( item[ 0 ], () => {
+      const tabs = ( model.projectActiveProperty.value ?
+                    [ [ 'Data', 'data' ], [ 'Graphs', 'graphs' ], [ 'Trials', 'notebook' ], [ 'Project', 'project' ] ] :
+                    [ [ 'Data', 'data' ], [ 'Graphs', 'graphs' ], [ 'Trials', 'notebook' ], [ 'Teacher', 'teacher' ] ] ).map( item => makeButton( item[ 0 ], () => {
         model.rightPanelProperty.value = item[ 1 ];
         renderRight();
       }, model.rightPanelProperty.value === item[ 1 ] ? '#9EE2F0' : '#EAF5F8', 9 ) );
@@ -1204,7 +1715,10 @@ class AnimalCellScreenView extends ScreenView {
       rightContent.addChild( tabRow );
       const panelMode = model.rightPanelProperty.value;
 
-      if ( panelMode === 'data' ) {
+      if ( panelMode === 'project' && model.projectActiveProperty.value ) {
+        renderProjectPanel( rightContent, tabRow );
+      }
+      else if ( panelMode === 'data' ) {
         rightContent.addChild( new Text( 'Live Cell Data', {
           font: readableBoldFont( 17 ), fill: '#125F7B',
           left: rightX + 13, top: tabRow.bottom + 8
@@ -1403,15 +1917,15 @@ class AnimalCellScreenView extends ScreenView {
         }
         else {
         const recentTrials = model.trialsProperty.value.slice( -5 );
-        const trialsPerPage = 2;
+        const trialsPerPage = 1;
         const trialPageCount = Math.max( 1, Math.ceil( recentTrials.length / trialsPerPage ) );
         trialPage = Math.min( trialPage, trialPageCount - 1 );
-        const note = new Text( 'Select two trials to compare. Five recent trials are kept.', {
+        const note = new Text( 'Compare any two saved trials. Five recent trials are kept.', {
           font: readableFont( 9 ), fill: '#294957', maxWidth: sideWidth - 26,
           left: rightX + 13, top: tabRow.bottom + 34
         } );
         rightContent.addChild( note );
-        const pageButton = makeButton( 'Saved trials page ' + ( trialPage + 1 ) + ' of ' + trialPageCount + ' · More', () => {
+        const pageButton = makeButton( 'TRIAL ' + ( trialPage + 1 ) + ' OF ' + trialPageCount + '  ·  NEXT', () => {
           trialPage = ( trialPage + 1 ) % trialPageCount;
           renderRight();
         }, '#EAF5F8', 9 );
@@ -1440,8 +1954,9 @@ class AnimalCellScreenView extends ScreenView {
           const row = new Text( ( selected ? '☑ ' : '□ ' ) + 'TRIAL ' + trial.number + ' · ' + conciseVariableName( trial.independentVariableKey ) +
                                '\nInput: ' + inputSummary +
                                '\n' + outputName + ': ' + roundSymmetric( beforeResult ) + ' → ' + roundSymmetric( afterResult ) + '%' +
-                               '\nHealth: ' + roundSymmetric( beforeHealth ) + ' → ' + roundSymmetric( trial.cellHealth ) + '%' +
-                               '\nObservation: ' + trial.observation, {
+                               '\nATP ' + roundSymmetric( beforeOutputs.atp ) + '→' + roundSymmetric( trial.atp ) + ' · Protein ' + roundSymmetric( beforeOutputs.protein ) + '→' + roundSymmetric( trial.protein ) +
+                               '\nWaste ' + roundSymmetric( beforeOutputs.waste ) + '→' + roundSymmetric( trial.waste ) + ' · Health ' + roundSymmetric( beforeHealth ) + '→' + roundSymmetric( trial.cellHealth ) + '%' +
+                               '\nPrediction: ' + trial.prediction + '\nObservation: ' + trial.observation, {
             font: readableFont( 8 ), fill: selected ? '#125F7B' : '#294957', maxWidth: sideWidth - 30,
             left: rightX + 13, top: y, cursor: 'pointer'
           } );
@@ -1595,9 +2110,16 @@ class AnimalCellScreenView extends ScreenView {
         pathwayOverlays[ pathway ].opacity = selectedPathway === pathway ? 0.8 : 0;
       } );
     };
-    model.controlGroupProperty.link( () => renderLeft() );
-    model.modeProperty.link( () => renderLeft() );
-    model.rightPanelProperty.link( () => renderRight() );
+    model.projectPageProperty.link( () => renderLeft() );
+    model.projectNotebookPageProperty.link( () => renderLeft() );
+    model.projectRoleRotationProperty.link( () => {
+      if ( model.modeProperty.value === 'project' ) {
+        renderLeft();
+      }
+      if ( model.rightPanelProperty.value === 'project' ) {
+        renderRight();
+      }
+    } );
     model.selectedOrganelleProperty.link( () => {
       updateOrganelleOutlines();
       renderRight();
@@ -1621,13 +2143,17 @@ class AnimalCellScreenView extends ScreenView {
     model.supportLevelProperty.link( () => renderLeft() );
     model.supportMessageProperty.link( () => renderLeft() );
     model.hintsEnabledProperty.link( () => renderLeft() );
-    model.trialsProperty.link( () => renderRight() );
-    model.selectedTrialsProperty.link( () => {
-      if ( model.rightPanelProperty.value === 'notebook' ) {
-        renderRight();
+    model.trialsProperty.link( () => {
+      renderRight();
+      if ( model.projectActiveProperty.value ) {
+        renderLeft();
       }
     } );
     model.selectedTrialsProperty.link( () => {
+      model.compareProjectTrials();
+      if ( model.projectActiveProperty.value ) {
+        renderLeft();
+      }
       if ( model.rightPanelProperty.value === 'notebook' ) {
         renderRight();
       }

@@ -43,6 +43,22 @@ const SCENARIOS = [
   { id: 'nucleus', question: 'What happens when nucleus signaling is reduced?', variable: 'nucleusSignal', value: 10, output: 'protein' }
 ];
 
+const PROJECT_CASES = [
+  { id: 'energy', title: 'Energy failure', variable: 'mitochondria', value: 15, symptoms: 'ATP is low · cell activity is slow · stress is high', candidates: [ 'oxygen', 'glucose', 'mitochondria' ] },
+  { id: 'waste', title: 'Waste crisis', variable: 'lysosomes', value: 15, symptoms: 'Waste is high · stress is rising · ATP is near normal', candidates: [ 'lysosomes', 'permeability', 'water' ] },
+  { id: 'protein', title: 'Protein production failure', variable: 'ribosomes', value: 15, symptoms: 'Protein production is low · ATP is near normal · downstream flow is weak', candidates: [ 'ribosomes', 'roughER', 'nucleusSignal' ] },
+  { id: 'shipping', title: 'Shipping failure', variable: 'golgi', value: 15, symptoms: 'Protein is made · export is low · material backs up near Golgi', candidates: [ 'golgi', 'roughER', 'permeability' ] },
+  { id: 'water', title: 'Water balance emergency', variable: 'water', value: 95, symptoms: 'Cell volume is abnormal · internal balance is disrupted', candidates: [ 'water', 'permeability' ] }
+];
+
+const PROJECT_ROLES = [ 'Cell biologist', 'Experiment designer', 'Data analyst', 'Systems engineer', 'Science communicator' ];
+const PROJECT_PRODUCTS = [ 'Cell rescue report', 'Scientific poster', 'Systems presentation', 'Cell health protocol' ];
+const PROJECT_SUCCESS_CRITERIA = [
+  'Cell health above 80% and two indicators improve',
+  'ATP and protein production both above 70%',
+  'Cell volume 60–90% and transport above 70%'
+];
+
 class AnimalCellModel {
   constructor() {
     this.modeProperty = new Property( 'learn' );
@@ -107,6 +123,24 @@ class AnimalCellModel {
     this.historyInterval = 0.5;
     this.historyElapsed = 0;
     this.selectedTrialsProperty = new Property( [] );
+    this.projectActiveProperty = new Property( false );
+    this.projectCaseProperty = new Property( PROJECT_CASES[ 0 ] );
+    this.projectPageProperty = new Property( 'launch' );
+    this.projectNotebookPageProperty = new NumberProperty( 0, { numberType: 'Integer', range: new Range( 0, 3 ) } );
+    this.projectMilestonesProperty = new Property( Array( 9 ).fill( false ) );
+    this.projectKnowProperty = new Property( 'The cell shows an abnormal live indicator.' );
+    this.projectNeedProperty = new Property( 'Which process is most connected to the abnormal indicator?' );
+    this.projectHypothesisProperty = new Property( 'If I test the most connected process, the abnormal output will move toward its healthy range.' );
+    this.projectPatternsProperty = new Property( 'Compare the direct output and cell health across trials.' );
+    this.projectDiagnosisProperty = new Property( 'No diagnosis yet — use evidence from at least three trials.' );
+    this.projectRescuePlanProperty = new Property( 'Choose a cause, explain why, then test the rescue.' );
+    this.projectConclusionProperty = new Property( 'Use trial values and visible cell changes to support the conclusion.' );
+    this.projectReflectionProperty = new Property( 'What evidence changed your thinking?' );
+    this.projectProductProperty = new Property( PROJECT_PRODUCTS[ 0 ] );
+    this.projectRoleRotationProperty = new NumberProperty( 0, { numberType: 'Integer', range: new Range( 0, PROJECT_ROLES.length - 1 ) } );
+    this.requiredTrialsProperty = new NumberProperty( 3, { numberType: 'Integer', range: new Range( 3, 5 ) } );
+    this.projectScaffoldingProperty = new Property( 'Guided inquiry' );
+    this.projectSuccessCriteriaProperty = new Property( PROJECT_SUCCESS_CRITERIA[ 0 ] );
 
     this.updateOutputs();
     this.atpProperty.value = this.targets.atp;
@@ -126,6 +160,163 @@ class AnimalCellModel {
   /** @public */
   getDefinitions( group ) {
     return VARIABLE_DEFINITIONS.filter( definition => definition.group === group );
+  }
+
+  /** Start or switch the student investigation to one hidden-cause case. @public */
+  startProjectCase( caseId ) {
+    const projectCase = PROJECT_CASES.find( item => item.id === caseId ) || PROJECT_CASES[ 0 ];
+    this.projectActiveProperty.value = true;
+    this.projectCaseProperty.value = projectCase;
+    this.projectPageProperty.value = 'launch';
+    this.projectNotebookPageProperty.value = 0;
+    this.projectMilestonesProperty.value = Array( 9 ).fill( false );
+    this.projectKnowProperty.value = 'The cell shows an abnormal live indicator.';
+    this.projectNeedProperty.value = 'Which process is most connected to the abnormal indicator?';
+    this.projectHypothesisProperty.value = 'If I test the most connected process, the abnormal output will move toward its healthy range.';
+    this.projectPatternsProperty.value = 'Compare the direct output and cell health across trials.';
+    this.projectDiagnosisProperty.value = 'No diagnosis yet — use evidence from at least three trials.';
+    this.projectRescuePlanProperty.value = 'Choose a cause, explain why, then test the rescue.';
+    this.projectConclusionProperty.value = 'Use trial values and visible cell changes to support the conclusion.';
+    this.projectReflectionProperty.value = 'What evidence changed your thinking?';
+    this.projectProductProperty.value = AnimalCellModel.PROJECT_PRODUCTS[ 0 ];
+    this.challengeProperty.value = null;
+    this.clearTrials();
+    this.selectedTrialsProperty.value = [];
+    this.resetToHealthyCell();
+    this.variables[ projectCase.variable ].value = projectCase.value;
+    this.selectedVariableProperty.value = projectCase.candidates.find( key => key !== projectCase.variable ) || 'oxygen';
+    this.modeProperty.value = 'project';
+    this.rightPanelProperty.value = 'data';
+    this.startTrial();
+    this.completeProjectMilestone( 0 );
+  }
+
+  /** Restore the selected mystery-cell starting condition for a controlled project trial. @public */
+  startProjectExperiment() {
+    this.resetToHealthyCell();
+    const projectCase = this.projectCaseProperty.value;
+    this.variables[ projectCase.variable ].value = projectCase.value;
+    this.startTrial();
+  }
+
+  /** Mark a project milestone complete without losing earlier evidence. @public */
+  completeProjectMilestone( index ) {
+    const milestones = [ ...this.projectMilestonesProperty.value ];
+    milestones[ index ] = true;
+    this.projectMilestonesProperty.value = milestones;
+  }
+
+  /** Cycle a structured notebook entry; students still have to replace starters with cited trial evidence. @public */
+  cycleProjectNote( key ) {
+    const projectCase = this.projectCaseProperty.value;
+    const options = {
+      know: [
+        'The cell shows an abnormal live indicator.',
+        'The cell animation and its meter both show a change.',
+        'Some systems look normal while one output is disrupted.'
+      ],
+      need: [
+        'Which process is most connected to the abnormal indicator?',
+        'Which input can I change while holding the others steady?',
+        'Does the direct effect appear before a downstream effect?'
+      ],
+      hypothesis: [
+        'If I test the most connected process, the abnormal output will move toward its healthy range.',
+        'If I change one possible cause, the directly connected output will change first.',
+        'If I restore the suspected system, cell health will recover gradually.'
+      ],
+      patterns: [
+        'Compare the direct output and cell health across trials.',
+        'The strongest evidence is the trial with the clearest before-and-after change.',
+        'A downstream output changed after its connected process changed.'
+      ],
+      diagnosis: projectCase.candidates.map( key => {
+        const definition = VARIABLE_DEFINITIONS.find( item => item.key === key );
+        return 'Possible cause: ' + definition.label + ' — not yet confirmed.';
+      } ).concat( [ 'No diagnosis yet — use evidence from at least three trials.' ] ),
+      rescuePlan: [
+        'Restore the diagnosed input toward its healthy range, then check ATP, waste, balance, and health.',
+        'Test one repair at a time and keep the other conditions controlled.',
+        'The rescue should improve at least two indicators without creating a new imbalance.'
+      ],
+      conclusion: [
+        'Use trial values and visible cell changes to support the conclusion.',
+        'My evidence supports the diagnosis because the directly connected output changed first.',
+        'This is a simplified model: the evidence supports a systems idea, not a real-cell measurement.'
+      ],
+      reflection: [
+        'What evidence changed your thinking?',
+        'Which experiment gave the strongest evidence, and why?',
+        'What would you test next? How do the organelles depend on one another?'
+      ]
+    };
+    const property = this[ 'project' + key[ 0 ].toUpperCase() + key.slice( 1 ) + 'Property' ];
+    const choices = options[ key ];
+    property.value = choices[ ( choices.indexOf( property.value ) + 1 ) % choices.length ];
+    if ( key === 'diagnosis' && this.trialsProperty.value.length >= this.requiredTrialsProperty.value ) {
+      this.completeProjectMilestone( 5 );
+    }
+  }
+
+  /** @public */
+  compareProjectTrials() {
+    if ( this.selectedTrialsProperty.value.length >= 2 ) {
+      this.completeProjectMilestone( 4 );
+    }
+  }
+
+  /** Return the next inquiry prompt without revealing the hidden cause. @public */
+  getAdaptiveHint() {
+    if ( !this.hintsEnabledProperty.value ) {
+      return '';
+    }
+    const supportLevel = this.projectActiveProperty.value ? this.projectScaffoldingProperty.value : this.challengeComplexityProperty.value;
+    const threshold = supportLevel === 'Open inquiry' || supportLevel === 'C — Independent' ? 3 :
+                      supportLevel === 'Supported inquiry' || supportLevel === 'B — Supported inquiry' ? 2 : 1;
+    const hintIndex = this.struggleCount - threshold;
+    const hints = [
+      'Hint 1: Which output is outside its healthy range?',
+      'Hint 2: Which organelle is most connected to that output?',
+      'Hint 3: The related organelle is highlighted in the cell.',
+      'Hint 4: The connected pathway is highlighted. Test one input and watch its direct effect.'
+    ];
+    if ( hintIndex >= 2 ) {
+      this.triggerFocusEffect( this.selectedVariableProperty.value || 'oxygen' );
+    }
+    if ( hintIndex >= 3 ) {
+      const variableKey = this.selectedVariableProperty.value || 'oxygen';
+      this.pathwayHighlightProperty.value = variableKey === 'oxygen' || variableKey === 'glucose' || variableKey === 'mitochondria' ? 'energy' :
+                                            variableKey === 'lysosomes' ? 'waste' :
+                                            variableKey === 'water' || variableKey === 'permeability' ? 'transport' : 'protein';
+    }
+    return hintIndex >= 0 ? ' ' + hints[ Math.min( hintIndex, hints.length - 1 ) ] : '';
+  }
+
+  /** @public */
+  createProjectProduct() {
+    const hasThreeTrials = this.trialsProperty.value.length >= this.requiredTrialsProperty.value;
+    const hasDiagnosis = !this.projectDiagnosisProperty.value.startsWith( 'No diagnosis yet' );
+    const hasCER = this.cerClaimProperty.value !== 'The condition I changed affected the cell system.' &&
+                   this.cerEvidenceProperty.value !== 'Use the before-and-after values as evidence.' &&
+                   this.cerReasoningProperty.value !== 'The changed process is connected to the output I measured.';
+    if ( !hasThreeTrials || !hasDiagnosis || !this.projectMilestonesProperty.value[ 4 ] || !this.projectMilestonesProperty.value[ 6 ] || !hasCER ) {
+      this.feedbackProperty.value = 'Finish the required trials, compare evidence, test the rescue, and complete CER before creating the final product.';
+      return false;
+    }
+    this.projectPageProperty.value = 'product';
+    this.completeProjectMilestone( 7 );
+    return true;
+  }
+
+  /** @public */
+  defendProject() {
+    if ( !this.projectMilestonesProperty.value[ 7 ] || this.projectConclusionProperty.value.startsWith( 'Use trial values' ) || this.projectReflectionProperty.value === 'What evidence changed your thinking?' ) {
+      this.feedbackProperty.value = 'Create the product, write an evidence-based conclusion, and reflect before presenting and defending it.';
+      return false;
+    }
+    this.completeProjectMilestone( 8 );
+    this.projectPageProperty.value = 'reflection';
+    return true;
   }
 
   /** Cycle the structured CER notebook choices. @public */
@@ -248,7 +439,7 @@ class AnimalCellModel {
       this.correctPredictionStreak = 0;
     }
     this.updateAdaptiveSupport();
-    const hint = this.hintsEnabledProperty.value && this.struggleCount >= 2 ? ' Hint: check the direct process first.' : '';
+    const hint = this.getAdaptiveHint();
     this.feedbackProperty.value += hint;
   }
 
@@ -301,6 +492,12 @@ class AnimalCellModel {
     };
     this.trialsProperty.value = [ ...this.trialsProperty.value, trial ];
     this.feedbackProperty.value = 'Trial ' + trial.number + ' saved. Change one condition to compare another trial.';
+    if ( this.projectActiveProperty.value ) {
+      this.completeProjectMilestone( 2 );
+      if ( this.trialsProperty.value.length >= this.requiredTrialsProperty.value ) {
+        this.completeProjectMilestone( 3 );
+      }
+    }
     return trial;
   }
 
@@ -327,7 +524,17 @@ class AnimalCellModel {
       { id: 'export', mission: 'SHIPPING FAILURE', variable: 'golgi', candidates: [ 'golgi', 'roughER', 'ribosomes', 'permeability' ], outputKey: 'export', value: 12, clue: 'Proteins are made, but delivery out of the cell is poor.', target: 'Protein export above 70% and cell health above 80%' },
       { id: 'water', mission: 'WATER BALANCE EMERGENCY', variable: 'water', candidates: [ 'water', 'permeability', 'lysosomes', 'mitochondria' ], outputKey: 'volume', value: 95, clue: 'The cell is swelling because outside water is far from balanced.', target: 'Cell volume between 60–90% and cell health above 80%' }
     ];
-    const next = cases[ this.rescueCaseIndex % cases.length ];
+    const projectCase = this.projectActiveProperty.value ? this.projectCaseProperty.value : null;
+    const next = projectCase ? {
+      id: projectCase.id,
+      mission: projectCase.title.toUpperCase(),
+      variable: projectCase.variable,
+      candidates: projectCase.candidates,
+      outputKey: projectCase.id === 'energy' ? 'atp' : projectCase.id === 'waste' ? 'waste' : projectCase.id === 'protein' ? 'protein' : projectCase.id === 'shipping' ? 'export' : 'volume',
+      value: projectCase.value,
+      clue: projectCase.symptoms,
+      target: 'Restore the abnormal indicator and improve cell health'
+    } : cases[ this.rescueCaseIndex % cases.length ];
     Object.values( this.variables ).forEach( ( property, index ) => {
       property.value = VARIABLE_DEFINITIONS[ index ].value;
     } );
@@ -349,22 +556,50 @@ class AnimalCellModel {
     }
     const suspectedValue = this.variables[ challenge.variable ].value;
     const restored = challenge.variable === 'water' ? suspectedValue >= 35 && suspectedValue <= 65 : suspectedValue >= 65;
-    const targetReached = challenge.id === 'energy' ? this.atpProperty.value >= 80 && this.healthProperty.value >= 80 :
+    let targetReached = challenge.id === 'energy' ? this.atpProperty.value >= 80 && this.healthProperty.value >= 80 :
                           challenge.id === 'waste' ? this.wasteProperty.value < 25 && this.healthProperty.value >= 80 :
                           challenge.id === 'protein' ? this.proteinProperty.value >= 70 && this.healthProperty.value >= 80 :
-                          challenge.id === 'export' ? this.exportProperty.value >= 70 && this.healthProperty.value >= 80 :
+                          challenge.id === 'export' || challenge.id === 'shipping' ? this.exportProperty.value >= 70 && this.healthProperty.value >= 80 :
                           this.volumeProperty.value >= 60 && this.volumeProperty.value <= 90 && this.healthProperty.value >= 80;
+    if ( this.projectActiveProperty.value ) {
+      const criteria = this.projectSuccessCriteriaProperty.value;
+      if ( criteria === PROJECT_SUCCESS_CRITERIA[ 0 ] ) {
+        const before = this.trialStartProperty.value || {};
+        const improvedIndicators = [
+          this.atpProperty.value > before.atp + 2,
+          this.proteinProperty.value > before.protein + 2,
+          this.wasteProperty.value < before.waste - 2,
+          this.balanceProperty.value > before.balance + 2,
+          this.healthProperty.value > before.health + 2,
+          this.transportProperty.value > before.transport + 2,
+          this.exportProperty.value > before.export + 2,
+          Math.abs( this.volumeProperty.value - 75 ) < Math.abs( before.volume - 75 ) - 2
+        ].filter( Boolean ).length;
+        targetReached = this.healthProperty.value >= 80 && improvedIndicators >= 2;
+      }
+      else if ( criteria === PROJECT_SUCCESS_CRITERIA[ 1 ] ) {
+        targetReached = this.atpProperty.value >= 70 && this.proteinProperty.value >= 70;
+      }
+      else {
+        targetReached = this.volumeProperty.value >= 60 && this.volumeProperty.value <= 90 && this.transportProperty.value >= 70;
+      }
+    }
     if ( restored && targetReached ) {
       const causeLabel = VARIABLE_DEFINITIONS.find( definition => definition.key === challenge.variable ).label;
       this.challengeFeedbackProperty.value = 'CELL RESCUED — ' + causeLabel + ' was the cause. Explain the evidence.';
       this.recordTrial();
       this.trialLockedProperty.value = true;
-      this.rescueCaseIndex++;
+      if ( !this.projectActiveProperty.value ) {
+        this.rescueCaseIndex++;
+      }
+      if ( this.projectActiveProperty.value ) {
+        this.completeProjectMilestone( 6 );
+      }
     }
     else {
       this.struggleCount++;
       this.updateAdaptiveSupport();
-      const hint = this.hintsEnabledProperty.value && this.struggleCount >= 2 ? ' Hint: check the first process linked to this output.' : '';
+      const hint = this.getAdaptiveHint();
       this.challengeFeedbackProperty.value = restored ? 'Repair underway. Wait for the cell data to respond, then test again.' + hint :
                                                 'Not rescued yet. Compare evidence and try one cause at a time.' + hint;
     }
@@ -506,6 +741,9 @@ class AnimalCellModel {
     this.controlGroupProperty.value = 'environment';
     this.experimentPanelProperty.value = 'question';
     this.rightPanelProperty.value = 'data';
+    this.projectActiveProperty.value = false;
+    this.projectPageProperty.value = 'launch';
+    this.projectMilestonesProperty.value = Array( 9 ).fill( false );
     this.teacherModeProperty.value = false;
     this.rescueCaseIndex = 0;
     this.teacherListProperty.value = 'variables';
@@ -530,5 +768,13 @@ AnimalCellModel.VARIABLE_DEFINITIONS = VARIABLE_DEFINITIONS;
 
 /** @public */
 AnimalCellModel.SCENARIOS = SCENARIOS;
+/** @public */
+AnimalCellModel.PROJECT_CASES = PROJECT_CASES;
+/** @public */
+AnimalCellModel.PROJECT_ROLES = PROJECT_ROLES;
+/** @public */
+AnimalCellModel.PROJECT_PRODUCTS = PROJECT_PRODUCTS;
+/** @public */
+AnimalCellModel.PROJECT_SUCCESS_CRITERIA = PROJECT_SUCCESS_CRITERIA;
 
 export default AnimalCellModel;

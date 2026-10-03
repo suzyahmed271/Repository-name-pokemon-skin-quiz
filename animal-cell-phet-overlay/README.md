@@ -16,6 +16,7 @@ The nucleus is described as containing DNA; RNA messages carry instructions to r
 
 ## Student modes
 
+- **Cell Survival Challenge (project-based learning):** begin with one of five mystery-cell cases, inspect cell parts, ask a testable question, run controlled experiments, compare saved trials, propose a diagnosis, test a rescue, and create/present a report, poster, systems presentation, or cell-health protocol.
 - **Learn:** select any of 14 structures for its role, connections, and a simplified failure effect; optional speech reads the description aloud.
 - **Explore:** use sliders and live evidence to design a fair test, start a baseline snapshot, and record trials.
 - **What Happens If?:** predict an outcome, run one of ten preset tests, compare the result with the prediction, then adjust variables for follow-up trials.
@@ -28,6 +29,8 @@ Environment controls include oxygen, glucose, outside water, temperature, pH, to
 Live indicators show relative ATP/energy, protein production, waste buildup, cell volume, internal balance, cell health, protein export, membrane transport, and stress. Animated particles illustrate protein transport, energy activity, and waste movement. The membrane responds visually to relative volume and stress.
 
 The notebook stores question, prediction, independent variable and value, dependent output before and after the test, observation, saved settings, and a structured claim-evidence-reasoning response. Resetting cell conditions preserves saved trials; Reset All clears the session.
+
+The Cell Survival Challenge includes nine visible project milestones, a rotating five-role team, teacher settings for trial count, product, support, hints, and rescue criteria, plus a project notebook, trial comparison, rubric, and print-to-PDF report view. Diagnosis is gated on the required saved trials and comparison of at least two trials. Rescue success follows the teacher-selected live-indicator criterion. Percentages remain simplified relative indicators, not measurements from real cells.
 
 Adaptive guidance responds to prediction performance: repeated difficulty surfaces a hint; successful evidence-based predictions gradually move from guided support to more independent inquiry. Teacher Mode can toggle hints, choose challenge complexity, and include or exclude variables and structures.
 
