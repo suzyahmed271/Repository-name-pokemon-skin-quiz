@@ -1,3 +1,11 @@
+// Copyright 2015-2026, University of Colorado Boulder
+
+/**
+ * View for the Animal Cell Systems Lab.
+ *
+ * @author Suzan Ahmed Mustafa
+ */
+
 import ScreenView from '../../../../joist/js/ScreenView.js';
 import ResetAllButton from '../../../../scenery-phet/js/buttons/ResetAllButton.js';
 import PhetFont from '../../../../scenery-phet/js/PhetFont.js';
@@ -153,7 +161,9 @@ class AnimalCellScreenView extends ScreenView {
         cursor: 'pointer'
       } );
       node.addInputListener( new FireListener( {
-        fire: () => model.selectedOrganelleProperty.value = key
+        fire: () => {
+          model.selectedOrganelleProperty.value = key;
+        }
       } ) );
       organelleNodes[ key ] = node;
       cellRoot.addChild( node );
@@ -178,7 +188,9 @@ class AnimalCellScreenView extends ScreenView {
       top: membrane.top + 30
     } );
     membraneHotspot.addInputListener( new FireListener( {
-      fire: () => model.selectedOrganelleProperty.value = 'membrane'
+      fire: () => {
+        model.selectedOrganelleProperty.value = 'membrane';
+      }
     } ) );
     cellRoot.addChild( membraneHotspot );
 
@@ -191,7 +203,9 @@ class AnimalCellScreenView extends ScreenView {
       top: membrane.top + 80
     } );
     cytoplasmHotspot.addInputListener( new FireListener( {
-      fire: () => model.selectedOrganelleProperty.value = 'cytoplasm'
+      fire: () => {
+        model.selectedOrganelleProperty.value = 'cytoplasm';
+      }
     } ) );
     cellRoot.addChild( cytoplasmHotspot );
 
@@ -274,7 +288,9 @@ class AnimalCellScreenView extends ScreenView {
     ].map( item => new RectangularPushButton( {
       content: new Text( item[ 0 ], { font: new PhetFont( 15 ) } ),
       baseColor: item[ 2 ],
-      listener: () => model.modeProperty.value = item[ 1 ]
+      listener: () => {
+        model.modeProperty.value = item[ 1 ];
+      }
     } ) );
 
     const modeBar = new HBox( {
@@ -358,12 +374,16 @@ class AnimalCellScreenView extends ScreenView {
         const buttons = experiments.map( item => new RectangularPushButton( {
           content: new Text( item[ 0 ], { font: new PhetFont( 14 ), maxWidth: 205 } ),
           baseColor: '#FFF3B0',
-          listener: () => model.runExperiment( item[ 1 ] )
+          listener: () => {
+            model.runExperiment( item[ 1 ] );
+          }
         } ) );
         const resetButton = new RectangularPushButton( {
           content: new Text( 'Reset Healthy Cell', { font: new PhetFont( 14 ) } ),
           baseColor: '#9FF0C4',
-          listener: () => model.resetCell()
+          listener: () => {
+          model.resetCell();
+        }
         } );
         const vbox = new VBox( {
           children: [ ...buttons, resetButton ],
@@ -431,7 +451,9 @@ class AnimalCellScreenView extends ScreenView {
     } );
 
     const resetAllButton = new ResetAllButton( {
-      listener: () => model.reset(),
+      listener: () => {
+        model.reset();
+      },
       right: this.layoutBounds.maxX - 18,
       bottom: this.layoutBounds.maxY - 18
     } );
