@@ -119,8 +119,6 @@ class AnimalCellScreenView extends ScreenView {
     this.addChild( subtitle );
 
     const cellRoot = new Node();
-    cellRoot.centerX = this.layoutBounds.centerX;
-    cellRoot.centerY = this.layoutBounds.centerY + 30;
     this.addChild( cellRoot );
 
     const membrane = new Circle( 235, {
@@ -208,6 +206,12 @@ class AnimalCellScreenView extends ScreenView {
       }
     } ) );
     cellRoot.addChild( cytoplasmHotspot );
+
+    // Position after adding children so the cell's non-empty bounds are centered.
+    // The reduced scale keeps the full diagram clear between the two information panels.
+    cellRoot.scale = 0.76;
+    cellRoot.centerX = this.layoutBounds.centerX;
+    cellRoot.centerY = this.layoutBounds.centerY + 35;
 
     const infoPanel = new Rectangle( 0, 0, 280, 350, 16, 16, {
       fill: 'white',
@@ -398,8 +402,8 @@ class AnimalCellScreenView extends ScreenView {
         leftContentRoot.addChild( meterText );
       }
       else {
-        const t = new Text(
-          'A cell is failing. Use evidence from your What-If experiments to diagnose the problem.\n\nQuestion:\nWhy does shutting down the nucleus eventually reduce protein production?',
+        const challengePrompt = new Text(
+          'Protein production has fallen sharply. DNA instructions are not reaching the ribosomes, but the ribosomes are still present. Which organelle should you rescue first?',
           {
             font: new PhetFont( 15 ),
             fill: '#4A6570',
@@ -408,7 +412,37 @@ class AnimalCellScreenView extends ScreenView {
             top: panelTitle.bottom + 14
           }
         );
-        leftContentRoot.addChild( t );
+        leftContentRoot.addChild( challengePrompt );
+
+        const feedback = new Text( 'Choose an organelle to diagnose the cell.', {
+          font: new PhetFont( { size: 14, weight: 'bold' } ),
+          fill: '#486C7A',
+          maxWidth: 225
+        } );
+        const choices = [ 'Nucleus', 'Ribosomes', 'Golgi body', 'Mitochondria' ];
+        const answerButtons = choices.map( choice => new RectangularPushButton( {
+          content: new Text( choice, { font: new PhetFont( 14 ) } ),
+          baseColor: '#DDF3FA',
+          listener: () => {
+            if ( choice === 'Nucleus' ) {
+              model.selectedOrganelleProperty.value = 'nucleus';
+              model.runExperiment( 'nucleus' );
+              feedback.string = 'Correct. The nucleus stores the DNA instructions needed to direct protein production.';
+              feedback.fill = '#187346';
+            }
+            else {
+              feedback.string = 'Try again. The clue is that DNA instructions are not reaching the ribosomes.';
+              feedback.fill = '#A3472E';
+            }
+          }
+        } ) );
+        const challengeContent = new VBox( {
+          children: [ ...answerButtons, feedback ],
+          spacing: 8,
+          left: leftPanel.left + 16,
+          top: challengePrompt.bottom + 16
+        } );
+        leftContentRoot.addChild( challengeContent );
       }
     };
 
