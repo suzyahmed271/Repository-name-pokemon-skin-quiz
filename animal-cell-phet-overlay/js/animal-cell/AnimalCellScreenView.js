@@ -829,20 +829,20 @@ class AnimalCellScreenView extends ScreenView {
     } );
     model.atpProperty.link( atp => {
       organelleNodes.mitochondria.scale = 0.88 + atp / 400;
-      energyParticles.forEach( particle => { particle.opacity = 0.2 + atp / 125; } );
+      energyParticles.forEach( particle => { particle.opacity = Math.min( 1, 0.2 + atp / 125 ); } );
     } );
     model.proteinProperty.link( protein => {
       organelleNodes.ribosomes.scale = 0.86 + protein / 360;
-      proteinParticles.forEach( particle => { particle.opacity = 0.18 + protein / 120; } );
+      proteinParticles.forEach( particle => { particle.opacity = Math.min( 1, 0.18 + protein / 120 ); } );
     } );
     model.wasteProperty.link( waste => {
-      wasteParticles.forEach( particle => { particle.opacity = 0.18 + waste / 115; } );
+      wasteParticles.forEach( particle => { particle.opacity = Math.min( 1, 0.18 + waste / 115 ); } );
       wasteBuildup.forEach( ( particle, index ) => {
         particle.visible = waste > 30 + index * 10;
       } );
     } );
     model.transportProperty.link( transport => {
-      organelleNodes.vesicles.opacity = 0.25 + transport / 130;
+      organelleNodes.vesicles.opacity = Math.min( 1, 0.25 + transport / 130 );
     } );
     model.flowPhaseProperty.link( phase => {
       proteinParticles.forEach( ( particle, index ) => {
