@@ -6,6 +6,8 @@
  * @author Suzan Ahmed Mustafa
  */
 
+/* eslint-env es6 */
+
 import Property from '../../../../axon/js/Property.js';
 import Screen from '../../../../joist/js/Screen.js';
 import StringProperty from '../../../../axon/js/StringProperty.js';
