@@ -6,8 +6,6 @@
  * @author Suzan Ahmed Mustafa
  */
 
-/* eslint-env es6 */
-
 import BooleanProperty from '../../../../axon/js/BooleanProperty.js';
 import NumberProperty from '../../../../axon/js/NumberProperty.js';
 import Property from '../../../../axon/js/Property.js';

@@ -26,16 +26,11 @@ jobs:
           cd workspace
           for repo in assert axon babel brand chipper dot gene-expression-essentials griddle joist kite phet-core phetcommon phetmarks query-string-machine scenery scenery-phet sherpa sun tambo tandem twixt utterance-queue; do git clone --depth 1 "https://github.com/phetsims/$repo.git"; done
           git clone --depth 1 https://github.com/phetsims/perennial.git perennial-alias
-          for repo in assert axon babel brand chipper dot gene-expression-essentials griddle joist kite phet-core phetcommon phetmarks query-string-machine scenery scenery-phet sherpa sun tambo tandem twixt utterance-queue; do
-            sha=$(node -e "const d=require('./gene-expression-essentials/dependencies.json'); process.stdout.write(d['$repo']?.sha || '')")
-            if [ -n "$sha" ]; then git -C "$repo" fetch --quiet --unshallow; git -C "$repo" checkout --quiet "$sha"; fi
-          done
       - name: Overlay Animal Cell source
         shell: bash
         run: |
           set -e
           cp animal-cell-phet-overlay/js/gene-expression-essentials-main.js workspace/gene-expression-essentials/js/gene-expression-essentials-main.js
-          cp animal-cell-phet-overlay/eslint.config.mjs workspace/gene-expression-essentials/eslint.config.mjs
           mkdir -p workspace/gene-expression-essentials/js/animal-cell
           cp animal-cell-phet-overlay/js/animal-cell/*.js workspace/gene-expression-essentials/js/animal-cell/
       - name: Install PhET build dependencies

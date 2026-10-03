@@ -6,8 +6,6 @@
  * @author Suzan Ahmed Mustafa
  */
 
-/* eslint-env es6 */
-
 import StringProperty from '../../axon/js/StringProperty.js';
 import Sim from '../../joist/js/Sim.js';
 import simLauncher from '../../joist/js/simLauncher.js';

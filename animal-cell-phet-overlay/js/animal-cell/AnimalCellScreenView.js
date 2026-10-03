@@ -6,8 +6,6 @@
  * @author Suzan Ahmed Mustafa
  */
 
-/* eslint-env es6 */
-
 import ScreenView from '../../../../joist/js/ScreenView.js';
 import ResetAllButton from '../../../../scenery-phet/js/buttons/ResetAllButton.js';
 import PhetFont from '../../../../scenery-phet/js/PhetFont.js';
