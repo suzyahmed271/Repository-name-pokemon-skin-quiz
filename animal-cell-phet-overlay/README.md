@@ -14,25 +14,13 @@ This is a simplified conceptual model, not a quantitative model of a real cell. 
 
 The nucleus is described as containing DNA; RNA messages carry instructions to ribosomes. The simulation does not show DNA itself moving to ribosomes. Animal-cell vacuoles are shown as small storage structures. The centrosome is an organizer, not a membrane-bound organelle. Cell division and detailed biochemical reactions are outside the model.
 
-## Student modes
+## Student experience
 
-- **Cell Survival Challenge (project-based learning):** begin with one of five mystery-cell cases, inspect cell parts, ask a testable question, run controlled experiments, compare saved trials, propose a diagnosis, test a rescue, and create/present a report, poster, systems presentation, or cell-health protocol.
-- **Learn:** select any of 14 structures for its role, connections, and a simplified failure effect; optional speech reads the description aloud.
-- **Explore:** choose one of ten environmental or cell-system inputs, predict an outcome, run a fair test, wait for the modeled response, and compare baseline with the result. Previewed slider values do not affect the cell until the experiment is run.
-- **What Happens If?:** predict an outcome, run a preset test, wait for its modeled response, compare the result with the prediction, then adjust variables for follow-up trials.
-- **Rescue the Cell:** diagnose a hidden energy, waste, export, transport, or instruction problem using data and organelle behavior; adjust a suspected cause and test the recovery.
+The student view is one focused Explore screen: a short organelle explanation on the left, the clickable animal cell in the center, and one organelle test and live result panel on the right. Selecting a structure highlights it and its relevant pathway; unrelated structures dim. Functional parts expose one corresponding function slider. Context structures explain their role without suggesting an unrelated control.
 
 ## Variables and live evidence
 
-Student Explore controls include oxygen saturation, glucose concentration, outside-solution osmolarity, temperature, pH, mitochondrial, ribosome, Golgi, and lysosome function, and membrane transport efficiency. Scientific inputs use their stated physical ranges and units; organelle and membrane efficiencies are labeled as model-function levels (100% = normal). Sliders show endpoints, the current value, and a healthy reference marker.
-
-The measurement view emphasizes the selected input, its direct modeled output, and a Stable / Stressed / Critical status. A separate trial plot has labeled axes, units, and one point for each saved run of the same variable. Up to five recent runs are listed together for comparison. During an experiment, only the relevant energy, protein, waste, transport, or osmosis pathway animates; the membrane changes size with modeled volume.
-
-The notebook stores question, prediction, independent variable and value, dependent output before and after the test, observation, saved settings, and a structured claim-evidence-reasoning response. Resetting cell conditions preserves saved trials; Reset All clears the session.
-
-The Cell Survival Challenge includes nine visible project milestones, a rotating five-role team, teacher settings for trial count, product, support, hints, and rescue criteria, plus a project notebook, trial comparison, rubric, and print-to-PDF report view. Diagnosis is gated on the required saved trials and comparison of at least two trials. Rescue success follows the teacher-selected live-indicator criterion. Percentages remain simplified relative indicators, not measurements from real cells.
-
-Adaptive guidance responds to prediction performance: repeated difficulty surfaces a hint; successful evidence-based predictions gradually move from guided support to more independent inquiry. Teacher Mode can toggle hints, choose challenge complexity, and include or exclude variables and structures.
+Explore controls adjust one selected organelle's corresponding model-function level (100% = normal). A run snapshots the current readings, then the simplified cell model responds over time. The panel compares before and live values for ATP, protein production, waste burden, and cell health. Reset to Healthy Cell restores baseline inputs while the outputs recover gradually. The colored cell particles and highlighted pathway represent the selected process; all values are conceptual indicators, not measurements from real cells.
 
 ## Build and run
 

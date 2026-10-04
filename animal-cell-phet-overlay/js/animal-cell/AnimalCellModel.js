@@ -59,7 +59,7 @@ const PROJECT_SUCCESS_CRITERIA = [
 
 class AnimalCellModel {
   constructor() {
-    this.modeProperty = new Property( 'learn' );
+    this.modeProperty = new Property( 'explore' );
     this.selectedOrganelleProperty = new Property( 'nucleus' );
     this.pathwayHighlightProperty = new Property( null );
     this.selectedVariableProperty = new Property( 'oxygen' );
@@ -805,7 +805,7 @@ class AnimalCellModel {
 
   /** @public */
   reset() {
-    this.modeProperty.value = 'learn';
+    this.modeProperty.value = 'explore';
     this.selectedOrganelleProperty.value = 'nucleus';
     this.pathwayHighlightProperty.value = null;
     this.selectedVariableProperty.value = 'oxygen';
