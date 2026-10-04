@@ -144,10 +144,14 @@ const metricProperty = ( model, key ) => model.variables[ key ] || model[ key + 
 const readableFont = size => new PhetFont( Math.max( 18, size * 1.25 ) );
 const readableBoldFont = size => new PhetFont( { size: Math.max( 20, size * 1.25 ), weight: 'bold' } );
 const definitionForKey = key => AnimalCellModel.VARIABLE_DEFINITIONS.find( definition => definition.key === key );
+const formattedNumber = ( value, digits ) => {
+  const scale = Math.pow( 10, digits );
+  return String( roundSymmetric( value * scale ) / scale );
+};
 const inputDisplayValue = ( key, value ) => {
   const definition = definitionForKey( key );
   const digits = key === 'ph' || key === 'temperature' || key === 'glucose' ? 1 : 0;
-  const amount = Number( value ).toFixed( digits );
+  const amount = formattedNumber( value, digits );
   return definition && definition.unit ? amount + ( definition.unit.startsWith( '%' ) ? '' : ' ' ) + definition.unit : amount;
 };
 const healthyRangeFor = key => ( {
@@ -1818,7 +1822,7 @@ class AnimalCellScreenView extends ScreenView {
             rightContent.addChild( new Path( Shape.lineSegment( new Vector2( x, graphBottom ), new Vector2( x, graphBottom + 7 ) ), {
               stroke: '#667D86', lineWidth: 1.5
             } ) );
-            rightContent.addChild( new Text( Number( tick.toFixed( latestKey === 'ph' || latestKey === 'temperature' || latestKey === 'glucose' ? 1 : 0 ) ).toString(), {
+            rightContent.addChild( new Text( formattedNumber( tick, latestKey === 'ph' || latestKey === 'temperature' || latestKey === 'glucose' ? 1 : 0 ), {
               font: readableFont( 8 ), fill: '#536A73', centerX: x, top: graphBottom + 10
             } ) );
           } );
