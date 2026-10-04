@@ -18,10 +18,11 @@ const VARIABLE_DEFINITIONS = [
   { key: 'glucose', label: 'Glucose concentration', group: 'environment', value: 5, min: 0, max: 10, step: 0.5, unit: 'mM', output: 'ATP availability', outputKey: 'atp', visible: 'Energy supply changes as fuel availability changes.' },
   { key: 'water', label: 'Outside osmolarity', group: 'environment', value: 300, min: 200, max: 400, step: 10, unit: 'mOsm/L', output: 'Relative cell volume', outputKey: 'volume', visible: 'Water movement changes cell volume.' },
   { key: 'temperature', label: 'Temperature', group: 'environment', value: 37, min: 30, max: 42, step: 0.5, unit: '°C', output: 'Cell process rate', outputKey: 'health', visible: 'Temperatures outside the healthy range reduce process performance.' },
-  { key: 'ph', label: 'pH', group: 'environment', value: 7.4, min: 6.4, max: 8.4, step: 0.1, unit: '', output: 'Cell process rate', outputKey: 'health', visible: 'Conditions far from the preferred range add stress.' },
+  { key: 'ph', label: 'pH', group: 'environment', value: 7.4, min: 6.5, max: 8.5, step: 0.1, unit: '', output: 'Cell process rate', outputKey: 'health', visible: 'Conditions far from the preferred range add stress.' },
   { key: 'toxins', label: 'Toxin exposure', group: 'conditions', value: 0, min: 0, max: 100, step: 5, unit: '% model exposure scale', output: 'Cell health / stress', outputKey: 'health', visible: 'Stress marks appear as exposure increases.' },
   { key: 'proteinDemand', label: 'Protein demand', group: 'conditions', value: 55, min: 0, max: 100, step: 5, unit: '% model setting', output: 'Protein output / backlog', outputKey: 'protein', visible: 'High demand increases the work shown at ribosomes and ER.' },
   { key: 'permeability', label: 'Membrane permeability', group: 'environment', value: 100, min: 0, max: 200, step: 10, unit: '% of normal permeability', output: 'Transport / balance', outputKey: 'balance', visible: 'Permeability changes selectivity and water movement.' },
+  { key: 'energy', label: 'ATP availability', group: 'environment', value: 100, min: 0, max: 100, step: 5, unit: '% of healthy baseline', output: 'ATP availability', outputKey: 'atp', visible: 'Available ATP powers active transport and cellular work.' },
   { key: 'mitochondria', label: 'Mitochondrial function', group: 'organelles', value: 100, min: 0, max: 100, step: 5, unit: '% of normal function', output: 'ATP availability', outputKey: 'atp', visible: 'Mitochondria activity and ATP supply respond.' },
   { key: 'ribosomes', label: 'Ribosome function', group: 'organelles', value: 100, min: 0, max: 100, step: 5, unit: '% of normal function', output: 'Protein production', outputKey: 'protein', visible: 'Protein particles become less frequent as function falls.' },
   { key: 'roughER', label: 'Rough ER function', group: 'organelles', value: 100, min: 0, max: 100, step: 5, unit: '% of normal function', output: 'Protein processing', outputKey: 'protein', visible: 'Protein processing and routing respond.' },
@@ -60,9 +61,9 @@ const PROJECT_SUCCESS_CRITERIA = [
 class AnimalCellModel {
   constructor() {
     this.modeProperty = new Property( 'explore' );
-    this.selectedOrganelleProperty = new Property( 'nucleus' );
+    this.selectedOrganelleProperty = new Property( 'cytoplasm' );
     this.pathwayHighlightProperty = new Property( null );
-    this.selectedVariableProperty = new Property( 'oxygen' );
+    this.selectedVariableProperty = new Property( 'ph' );
     this.controlGroupProperty = new Property( 'environment' );
     this.experimentPanelProperty = new Property( 'question' );
     this.rightPanelProperty = new Property( 'data' );
@@ -186,12 +187,13 @@ class AnimalCellModel {
   updateCellStatus() {
     const volume = this.volumeProperty.value;
     const inputs = this.appliedInputsProperty.value;
-    const membraneFailureRisk = volume >= 165 || ( inputs.permeability >= 190 && Math.abs( inputs.water - 300 ) >= 50 );
-    const critical = membraneFailureRisk || this.healthProperty.value < 35 || this.stressProperty.value >= 60 || this.wasteProperty.value >= 82;
+    const membraneFailureRisk = volume >= 165 || inputs.permeability >= 190;
+    const critical = membraneFailureRisk || this.atpProperty.value <= 8 || this.healthProperty.value < 35 || this.stressProperty.value >= 60 || this.wasteProperty.value >= 82;
     const swollen = volume >= 125;
     const shrunken = volume <= 75;
+    const lowVitality = this.atpProperty.value <= 35;
     const stressed = this.healthProperty.value < 88 || this.stressProperty.value >= 15 || this.wasteProperty.value >= 48 || Math.abs( inputs.ph - 7.4 ) > 0.2;
-    const phenotype = critical ? 'CRITICAL' : swollen ? 'SWOLLEN' : shrunken ? 'SHRUNKEN' : stressed ? 'STRESSED' : 'HEALTHY';
+    const phenotype = critical ? 'CRITICAL' : swollen ? 'SWOLLEN' : shrunken ? 'SHRUNKEN' : lowVitality ? 'LOW-VITALITY' : stressed ? 'STRESSED' : 'HEALTHY';
     this.phenotypeProperty.value = phenotype;
     this.cellStatusProperty.value = critical ? 'Critical' : phenotype === 'HEALTHY' ? 'Stable' : phenotype[ 0 ] + phenotype.slice( 1 ).toLowerCase();
   }
@@ -698,7 +700,8 @@ class AnimalCellModel {
     const oxygenFraction = clamp( v( 'oxygen' ) ) / 100;
     const glucoseFraction = relativeGlucose / 100;
     const mitochondrialFraction = clamp( v( 'mitochondria' ) ) / 100;
-    const atpTarget = clamp( 100 * Math.pow( oxygenFraction, 0.35 ) * Math.pow( glucoseFraction, 0.35 ) * mitochondrialFraction * temperatureFit * ( 0.65 + phFit * 0.35 ) * ( 1 - v( 'toxins' ) * 0.004 ) );
+    const energyAvailability = clamp( v( 'energy' ) ) / 100;
+    const atpTarget = clamp( 100 * Math.pow( oxygenFraction, 0.35 ) * Math.pow( glucoseFraction, 0.35 ) * mitochondrialFraction * energyAvailability * temperatureFit * ( 0.65 + phFit * 0.35 ) * ( 1 - v( 'toxins' ) * 0.004 ) );
     // Selective transport works best near normal permeability; too little or too much disrupts homeostasis.
     // Active transport also slows when ATP supply is low; water osmosis itself is shown separately.
     const transport = clamp( ( 100 - Math.abs( 100 - membraneFunction ) * 0.72 - osmoticPenalty ) * phFit * ( 0.4 + 0.6 * atpTarget / 100 ) );
@@ -742,7 +745,7 @@ class AnimalCellModel {
     this.golgiBacklogProperty.value = approach( this.golgiBacklogProperty.value, clamp( ( this.proteinProperty.value * 0.78 + inputs.proteinDemand * 0.22 ) * ( 1 - inputs.golgi / 100 ) ), 4.5 );
     this.exportProperty.value = approach( this.exportProperty.value, clamp( Math.min( this.proteinProperty.value - this.golgiBacklogProperty.value * 0.55, inputs.golgi, this.transportProperty.value, this.atpProperty.value + 10 ) ), 3.5 );
     this.stressProperty.value = approach( this.stressProperty.value, this.targets.stress, 5 );
-    const wasteTarget = clamp( 10 + inputs.toxins * 0.32 + ( 100 - inputs.lysosomes ) * 0.72 + this.stressProperty.value * 0.18 );
+    const wasteTarget = clamp( 10 + inputs.toxins * 0.32 + ( 100 - inputs.lysosomes ) * 0.72 + this.stressProperty.value * 0.18 + ( 100 - this.transportProperty.value ) * 0.25 );
     this.wasteProperty.value = approach( this.wasteProperty.value, wasteTarget, 6 );
     const healthTarget = clamp( this.atpProperty.value * 0.27 + this.proteinProperty.value * 0.12 + ( 100 - this.wasteProperty.value ) * 0.20 + this.balanceProperty.value * 0.24 + ( 100 - this.stressProperty.value ) * 0.17 );
     this.healthProperty.value = approach( this.healthProperty.value, healthTarget, 7 );
@@ -828,9 +831,9 @@ class AnimalCellModel {
   /** @public */
   reset() {
     this.modeProperty.value = 'explore';
-    this.selectedOrganelleProperty.value = 'nucleus';
+    this.selectedOrganelleProperty.value = 'cytoplasm';
     this.pathwayHighlightProperty.value = null;
-    this.selectedVariableProperty.value = 'oxygen';
+    this.selectedVariableProperty.value = 'ph';
     this.trialLockedProperty.value = false;
     this.advancedExploreProperty.value = false;
     this.controlGroupProperty.value = 'environment';
