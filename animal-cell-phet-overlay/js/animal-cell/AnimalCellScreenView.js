@@ -318,9 +318,9 @@ class AnimalCellScreenView extends ScreenView {
     const selectOrganelle = key => {
       model.restoreHealthyCellGradually();
       model.selectedOrganelleProperty.value = key;
-      const relatedVariable = VARIABLE_ORGANELLES[ key ];
-      if ( relatedVariable && EXPLORE_VARIABLE_KEYS.includes( relatedVariable ) ) {
-        model.selectedVariableProperty.value = relatedVariable;
+      const organelleVariables = EXPLORE_VARIABLES_BY_ORGANELLE[ key ];
+      if ( organelleVariables && organelleVariables.length ) {
+        model.selectedVariableProperty.value = organelleVariables[ 0 ];
       }
       model.pathwayHighlightProperty.value = INFO[ key ].pathway || null;
       model.rightPanelProperty.value = 'data';
