@@ -4,13 +4,13 @@ An English-language classroom simulation for middle-school students. Students in
 
 ## Scientific model
 
-This is a simplified conceptual model, not a quantitative model of a real cell. Percentages are relative indicators, not measured biological values. The model focuses on these relationships:
+This is a simplified conceptual model, not a quantitative model of a real cell. Environmental inputs use interpretable classroom units; ATP availability, protein production, transport, cell volume, and the explicitly named model health score are estimates, not laboratory readings. Waste is shown as a relative index. The model focuses on these relationships:
 
-- Oxygen and glucose availability plus mitochondria function affect the relative ATP/usable-energy indicator.
+- Oxygen saturation (%) and glucose concentration (0–10 mM), together with mitochondrial function, affect ATP availability (% of the healthy baseline).
 - Nucleus signaling and ribosome function affect protein production; rough ER, vesicles, Golgi, and the membrane are shown as a connected processing and transport pathway.
 - Lysosome function affects waste buildup.
-- Water level and membrane permeability affect relative cell volume and internal balance.
-- Temperature, pH, and toxin exposure affect simplified process-performance and stress indicators.
+- Outside-solution osmolarity (250–350 mOsm/L) and membrane transport efficiency affect cell volume (% of its baseline), water movement, and internal balance.
+- Temperature (30–42 °C) and pH (6.5–8.0) affect simplified process performance and cell stress. Reference healthy settings are 37 °C, pH 7.4, and 300 mOsm/L.
 
 The nucleus is described as containing DNA; RNA messages carry instructions to ribosomes. The simulation does not show DNA itself moving to ribosomes. Animal-cell vacuoles are shown as small storage structures. The centrosome is an organizer, not a membrane-bound organelle. Cell division and detailed biochemical reactions are outside the model.
 
@@ -18,15 +18,15 @@ The nucleus is described as containing DNA; RNA messages carry instructions to r
 
 - **Cell Survival Challenge (project-based learning):** begin with one of five mystery-cell cases, inspect cell parts, ask a testable question, run controlled experiments, compare saved trials, propose a diagnosis, test a rescue, and create/present a report, poster, systems presentation, or cell-health protocol.
 - **Learn:** select any of 14 structures for its role, connections, and a simplified failure effect; optional speech reads the description aloud.
-- **Explore:** use sliders and live evidence to design a fair test, start a baseline snapshot, and record trials.
-- **What Happens If?:** predict an outcome, run one of ten preset tests, compare the result with the prediction, then adjust variables for follow-up trials.
+- **Explore:** choose one of ten environmental or cell-system inputs, predict an outcome, run a fair test, wait for the modeled response, and compare baseline with the result. Previewed slider values do not affect the cell until the experiment is run.
+- **What Happens If?:** predict an outcome, run a preset test, wait for its modeled response, compare the result with the prediction, then adjust variables for follow-up trials.
 - **Rescue the Cell:** diagnose a hidden energy, waste, export, transport, or instruction problem using data and organelle behavior; adjust a suspected cause and test the recovery.
 
 ## Variables and live evidence
 
-Environment controls include oxygen, glucose, outside water, temperature, pH, toxin exposure, protein demand, and membrane permeability. Organelle controls include mitochondria, ribosome, Golgi, lysosome, and nucleus-signaling function. Controls use keyboard- and touch-friendly sliders in 5-point steps.
+Student Explore controls include oxygen saturation, glucose concentration, outside-solution osmolarity, temperature, pH, mitochondrial, ribosome, Golgi, and lysosome function, and membrane transport efficiency. Scientific inputs use their stated physical ranges and units; organelle and membrane efficiencies are labeled as model-function levels (100% = normal). Sliders show endpoints, the current value, and a healthy reference marker.
 
-Live indicators show relative ATP/energy, protein production, waste buildup, cell volume, internal balance, cell health, protein export, membrane transport, and stress. Animated particles illustrate protein transport, energy activity, and waste movement. The membrane responds visually to relative volume and stress.
+The measurement view emphasizes the selected input, its direct modeled output, and a Stable / Stressed / Critical status. A separate trial plot has labeled axes, units, and one point for each saved run of the same variable. Up to five recent runs are listed together for comparison. During an experiment, only the relevant energy, protein, waste, transport, or osmosis pathway animates; the membrane changes size with modeled volume.
 
 The notebook stores question, prediction, independent variable and value, dependent output before and after the test, observation, saved settings, and a structured claim-evidence-reasoning response. Resetting cell conditions preserves saved trials; Reset All clears the session.
 
