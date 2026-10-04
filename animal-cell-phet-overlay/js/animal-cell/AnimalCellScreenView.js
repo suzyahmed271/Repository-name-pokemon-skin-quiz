@@ -568,7 +568,8 @@ class AnimalCellScreenView extends ScreenView {
     this.addChild( rightViewport );
     this.addChild( rightScrollControls );
     const rightScrollProperty = new NumberProperty( 0 );
-    rightScrollProperty.link( value => { rightContent.y = -value; } );
+    let rightMaximumScroll = 0;
+    rightScrollProperty.link( value => { rightContent.y = value - rightMaximumScroll; } );
     let rightScrollSlider = null;
     let rightStatusText = null;
     let rightStatusBackground = null;
@@ -1958,8 +1959,8 @@ class AnimalCellScreenView extends ScreenView {
       rightPanelUnlinks.push( () => model.variables[ variableKey ].unlink( updateCurrentValue ) );
       y = currentValue.bottom + 5;
       if ( variableKey === 'ph' || variableKey === 'water' || variableKey === 'permeability' ) {
-        const scaleLabels = variableKey === 'ph' ? [ '6.5  ACIDIC', '7.4  OPTIMAL', '8.5  ALKALINE' ] :
-                            variableKey === 'water' ? [ '200  HYPO', '300  NORMAL', '400  HYPER' ] : [ 'LOW', 'NORMAL', 'HIGH' ];
+        const scaleLabels = variableKey === 'ph' ? [ 'ACIDIC', 'OPTIMAL', 'ALKALINE' ] :
+                            variableKey === 'water' ? [ 'HYPO', 'NORMAL', 'HYPER' ] : [ 'LOW', 'NORMAL', 'HIGH' ];
         const scaleRow = new Node();
         scaleLabels.forEach( ( label, index ) => {
           scaleRow.addChild( new Text( label, {
@@ -2203,13 +2204,14 @@ class AnimalCellScreenView extends ScreenView {
       y = resetButton.bottom + 24;
 
       rightContent.y = 0;
-      rightScrollProperty.value = 0;
       rightScrollControls.removeAllChildren();
       if ( rightScrollSlider ) {
         rightScrollSlider.dispose();
         rightScrollSlider = null;
       }
       const maximumScroll = Math.max( 0, y - ( panelTop + panelHeight - 20 ) );
+      rightMaximumScroll = maximumScroll;
+      rightScrollProperty.value = maximumScroll;
       if ( maximumScroll > 0 ) {
         rightScrollSlider = new VSlider( rightScrollProperty, new Range( 0, maximumScroll ), {
           trackSize: new Dimension2( 7, panelHeight - 44 ), thumbSize: new Dimension2( 18, 36 ),
@@ -2219,9 +2221,7 @@ class AnimalCellScreenView extends ScreenView {
         rightScrollSlider.top = panelTop + 22;
         rightScrollControls.addChild( rightScrollSlider );
       }
-      else {
-        rightScrollProperty.value = 0;
-      }
+      else { rightContent.y = 0; }
     };
 
     const renderRight = () => {
