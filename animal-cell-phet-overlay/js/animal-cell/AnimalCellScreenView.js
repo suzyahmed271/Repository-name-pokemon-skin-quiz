@@ -2142,30 +2142,25 @@ class AnimalCellScreenView extends ScreenView {
         const formatPrimary = snapshot => formatOutput( primaryOutput, snapshot[ primaryOutput ] );
         const stateBefore = ( before.phenotype || 'HEALTHY' ).replace( '-', ' ' );
         const stateAfter = model.phenotypeProperty.value.replace( '-', ' ' );
-        const columnWidth = ( width - 8 ) / 2;
-        const beforeColumn = new Rectangle( 0, 0, columnWidth, 104, 6, 6, {
-          fill: '#F0F7F9', stroke: '#D8E8EC', lineWidth: 1, left: x, top: y
-        } );
-        const afterColumn = new Rectangle( 0, 0, columnWidth, 104, 6, 6, {
-          fill: '#F0F7F9', stroke: '#D8E8EC', lineWidth: 1, left: x + columnWidth + 8, top: y
-        } );
-        rightContent.addChild( beforeColumn );
-        rightContent.addChild( afterColumn );
         [
-          { rect: beforeColumn, title: 'BEFORE', input: inputBefore, metric: primaryLabel + ' ' + formatPrimary( before ), state: stateBefore },
-          { rect: afterColumn, title: 'AFTER', input: inputAfter, metric: primaryLabel + ' ' + formatPrimary( after ), state: stateAfter }
-        ].forEach( column => {
-          const titleText = new Text( column.title, {
-            font: new PhetFont( { size: 18, weight: 'bold' } ), fill: '#125F7B', left: column.rect.left + 8, top: y + 7
+          { title: 'BEFORE', input: inputBefore, metric: primaryLabel + ' ' + formatPrimary( before ), state: stateBefore },
+          { title: 'AFTER', input: inputAfter, metric: primaryLabel + ' ' + formatPrimary( after ), state: stateAfter }
+        ].forEach( rowData => {
+          const row = new Rectangle( 0, 0, width, 108, 6, 6, {
+            fill: '#F0F7F9', stroke: '#D8E8EC', lineWidth: 1, left: x, top: y
           } );
-          const detailText = new Text( column.input + '\n' + column.metric + '\n' + column.state, {
-            font: new PhetFont( 18 ), fill: '#294957', left: column.rect.left + 8, top: titleText.bottom + 4,
-            maxWidth: columnWidth - 16
+          const titleText = new Text( rowData.title, {
+            font: new PhetFont( { size: 18, weight: 'bold' } ), fill: '#125F7B', left: x + 10, top: y + 8
           } );
+          const detailText = new Text( rowData.input + '\n' + rowData.metric + '\n' + rowData.state, {
+            font: new PhetFont( { size: 18, weight: 'bold' } ), fill: '#294957', left: x + 10, top: titleText.bottom + 5,
+            maxWidth: width - 20
+          } );
+          rightContent.addChild( row );
           rightContent.addChild( titleText );
           rightContent.addChild( detailText );
+          y = row.bottom + 8;
         } );
-        y = beforeColumn.bottom + 8;
         rightContent.addChild( new Text( 'WHAT CHANGED?', {
           font: new PhetFont( { size: 18, weight: 'bold' } ), fill: '#125F7B', left: x, top: y
         } ) );
