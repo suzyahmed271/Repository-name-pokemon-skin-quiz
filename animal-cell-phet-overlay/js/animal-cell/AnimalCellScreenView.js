@@ -148,7 +148,6 @@ const INFO = {
   }
 };
 
-const EXPLORE_VARIABLE_KEYS = [ 'ph', 'temperature', 'water', 'permeability', 'oxygen', 'glucose', 'mitochondria', 'ribosomes', 'golgi', 'lysosomes', 'energy' ];
 const VARIABLE_PATHWAYS = {
   ph: 'energy', temperature: 'energy', water: 'transport', permeability: 'transport', energy: 'energy',
   oxygen: 'energy', glucose: 'energy', mitochondria: 'energy', ribosomes: 'protein',
