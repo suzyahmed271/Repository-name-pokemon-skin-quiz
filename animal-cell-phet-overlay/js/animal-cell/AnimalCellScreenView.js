@@ -29,6 +29,7 @@ const INFO = {
   membrane: {
     name: 'Cell membrane', color: '#36B8D0',
     job: 'A selective boundary that controls what enters and leaves.',
+    mechanism: 'Selective transport proteins and membrane vesicles regulate passage.',
     connects: 'Water, nutrients, wastes, and transport vesicles.',
     failure: 'Transport and internal balance become disrupted.',
     observation: 'Transport particles and cell volume respond to the membrane setting.',
@@ -36,14 +37,15 @@ const INFO = {
   },
   cytoplasm: {
     name: 'Cytoplasm', color: '#C9F4FF',
-    job: 'The fluid workspace where organelles and many reactions are found.',
-    connects: 'Surrounds and supports the cell structures.',
-    failure: 'This simplified model does not vary the cytoplasm separately.',
+    job: 'The fluid interior of the cell where organelles are suspended.',
+    connects: 'Many chemical reactions occur here; materials move between organelles.',
+    failure: 'It provides the environment that allows cell processes to continue.',
     position: [ -10, 0 ], radius: 78, pathway: 'energy'
   },
   nucleus: {
     name: 'Nucleus', color: '#D968E8',
     job: 'Contains DNA and coordinates many cell activities.',
+    mechanism: 'DNA instructions are copied into RNA messages for protein-making.',
     connects: 'Sends RNA instructions to ribosomes.',
     failure: 'Instruction-led protein production decreases.',
     position: [ -22, -12 ], radius: 48, functionKey: 'nucleusSignal', testVariable: 'nucleusSignal', pathway: 'protein'
@@ -58,6 +60,7 @@ const INFO = {
   mitochondria: {
     name: 'Mitochondrion', color: '#FF9A55',
     job: 'Makes ATP, a usable energy source, during cellular respiration.',
+    mechanism: 'Uses oxygen and glucose in respiration to supply ATP.',
     connects: 'Oxygen + glucose; ATP powers many cell processes.',
     failure: 'ATP decreases, so cell processes slow down.',
     importance: 'ATP supplies energy for transport and protein processing.',
@@ -67,6 +70,7 @@ const INFO = {
   ribosomes: {
     name: 'Ribosomes', color: '#FFD06A',
     job: 'Builds proteins from RNA instructions.',
+    mechanism: 'Reads RNA and joins amino acids into a protein chain.',
     connects: 'Works with the nucleus and rough ER.',
     failure: 'Protein production decreases.',
     importance: 'Proteins form structures and carry out many cell jobs.',
@@ -76,6 +80,7 @@ const INFO = {
   roughER: {
     name: 'Rough ER', color: '#68CEE8',
     job: 'Processes and routes many newly made proteins.',
+    mechanism: 'Folds and processes proteins before routing them onward.',
     connects: 'Ribosomes, transport vesicles, and Golgi.',
     failure: 'Fewer proteins reach Golgi for packaging.',
     importance: 'New proteins need processing before many can be shipped.',
@@ -92,6 +97,7 @@ const INFO = {
   golgi: {
     name: 'Golgi apparatus', color: '#F263B1',
     job: 'Modifies, sorts, and packages materials for delivery.',
+    mechanism: 'Sorts cargo and packs it into transport vesicles.',
     connects: 'Receives proteins from ER; sends them in vesicles.',
     failure: 'Proteins back up and export decreases.',
     importance: 'Sorting and packaging route proteins to their destinations.',
@@ -101,6 +107,7 @@ const INFO = {
   lysosome: {
     name: 'Lysosome', color: '#FF7777',
     job: 'Breaks down and recycles waste and worn-out parts.',
+    mechanism: 'Digestive enzymes break material into reusable components.',
     connects: 'Receives waste in transport vesicles.',
     failure: 'Waste builds up and cell stress rises.',
     importance: 'Recycling clears worn parts and material the cell no longer needs.',
@@ -135,6 +142,18 @@ const INFO = {
     failure: 'Cell-division organization may be affected; division is not simulated.',
     position: [ 50, 24 ], radius: 19, pathway: 'transport'
   }
+};
+
+const EXPLORE_VARIABLE_KEYS = [ 'ph', 'temperature', 'water', 'permeability', 'oxygen', 'glucose', 'mitochondria', 'ribosomes', 'golgi', 'lysosomes' ];
+const VARIABLE_PATHWAYS = {
+  ph: 'energy', temperature: 'energy', water: 'transport', permeability: 'transport',
+  oxygen: 'energy', glucose: 'energy', mitochondria: 'energy', ribosomes: 'protein',
+  golgi: 'protein', lysosomes: 'waste'
+};
+const VARIABLE_ORGANELLES = {
+  oxygen: 'mitochondria', glucose: 'mitochondria', mitochondria: 'mitochondria',
+  ribosomes: 'ribosomes', golgi: 'golgi', lysosomes: 'lysosome',
+  water: 'membrane', permeability: 'membrane', ph: 'cytoplasm', temperature: 'cytoplasm'
 };
 
 const METRICS = [
@@ -224,6 +243,10 @@ class AnimalCellScreenView extends ScreenView {
     const selectOrganelle = key => {
       model.restoreHealthyCellGradually();
       model.selectedOrganelleProperty.value = key;
+      const relatedVariable = VARIABLE_ORGANELLES[ key ];
+      if ( relatedVariable && EXPLORE_VARIABLE_KEYS.includes( relatedVariable ) ) {
+        model.selectedVariableProperty.value = relatedVariable;
+      }
       model.pathwayHighlightProperty.value = INFO[ key ].pathway || null;
       model.rightPanelProperty.value = 'data';
       model.trialLockedProperty.value = false;
@@ -236,6 +259,9 @@ class AnimalCellScreenView extends ScreenView {
     } );
     const cytoplasm = new Circle( 174, {
       fill: '#E9FBFF', opacity: 0.92, scaleY: 0.82, cursor: 'pointer'
+    } );
+    const cytoplasmGlow = new Circle( 166, {
+      fill: '#84DDF4', opacity: 0, scaleY: 0.82, pickable: false
     } );
     membrane.addInputListener( new FireListener( { fire: () => {
       selectOrganelle( 'membrane' );
@@ -251,6 +277,24 @@ class AnimalCellScreenView extends ScreenView {
     } } ) );
     cellRoot.addChild( membrane );
     cellRoot.addChild( cytoplasm );
+    cellRoot.addChild( cytoplasmGlow );
+    const membraneWrinkles = [];
+    for ( let index = 0; index < 10; index++ ) {
+      const angle = index * Math.PI * 2 / 10;
+      const radius = 183;
+      const tangent = angle + Math.PI / 2;
+      const wrinkleShape = new Shape();
+      wrinkleShape.moveToPoint( new Vector2( Math.cos( angle ) * radius, Math.sin( angle ) * radius ) );
+      wrinkleShape.lineToPoint( new Vector2( Math.cos( angle ) * ( radius + 4 ) + Math.cos( tangent ) * 4,
+        Math.sin( angle ) * ( radius + 4 ) + Math.sin( tangent ) * 4 ) );
+      wrinkleShape.lineToPoint( new Vector2( Math.cos( angle ) * ( radius - 2 ) - Math.cos( tangent ) * 3,
+        Math.sin( angle ) * ( radius - 2 ) - Math.sin( tangent ) * 3 ) );
+      const wrinkle = new Path( wrinkleShape, {
+        stroke: '#C95B53', lineWidth: 3, fill: null, opacity: 0, pickable: false
+      } );
+      membrane.addChild( wrinkle );
+      membraneWrinkles.push( wrinkle );
+    }
     const pathwayOverlays = {};
     const addPathwayOverlay = ( key, points, color ) => {
       const pathShape = new Shape();
@@ -397,24 +441,31 @@ class AnimalCellScreenView extends ScreenView {
       return particle;
     } );
     const membraneParticles = [ 0, 1, 2, 3, 4, 5 ].map( () => {
-      const particle = new Circle( 3, { fill: '#2E9DB6', stroke: '#176A81', lineWidth: 1 } );
+      const particle = new Circle( 3, { fill: '#269FE8', stroke: '#176A81', lineWidth: 1 } );
+      cellRoot.addChild( particle );
+      return particle;
+    } );
+    const waterParticles = [ 0, 1, 2, 3, 4, 5, 6, 7 ].map( () => {
+      const particle = new Circle( 5, { fill: '#1D9FE8', stroke: '#126C9F', lineWidth: 1 } );
       cellRoot.addChild( particle );
       return particle;
     } );
     const updateParticleVisibility = () => {
-      const active = true;
       const pathway = model.pathwayHighlightProperty.value;
-      energyParticles.forEach( particle => { particle.visible = active && pathway === 'energy'; } );
-      proteinParticles.forEach( particle => { particle.visible = active && pathway === 'protein'; } );
-      wasteParticles.forEach( particle => { particle.visible = active && pathway === 'waste'; } );
-      membraneParticles.forEach( particle => { particle.visible = active && pathway === 'transport'; } );
-      golgiBacklogParticles.forEach( particle => { particle.visible = active && pathway === 'protein'; } );
-      wasteBuildup.forEach( particle => { particle.visible = active && pathway === 'waste' && model.wasteProperty.value > 22; } );
+      energyParticles.forEach( particle => { particle.visible = pathway === 'energy'; } );
+      proteinParticles.forEach( particle => { particle.visible = pathway === 'protein'; } );
+      wasteParticles.forEach( particle => { particle.visible = pathway === 'waste'; } );
+      membraneParticles.forEach( particle => { particle.visible = pathway === 'transport' && model.selectedVariableProperty.value !== 'water'; } );
+      waterParticles.forEach( particle => { particle.visible = pathway === 'transport' && model.selectedVariableProperty.value === 'water'; } );
+      golgiBacklogParticles.forEach( particle => { particle.visible = pathway === 'protein'; } );
+      wasteBuildup.forEach( particle => { particle.visible = pathway === 'waste' && model.wasteProperty.value > 22; } );
     };
     model.pathwayHighlightProperty.link( updateParticleVisibility );
     model.trialLockedProperty.link( updateParticleVisibility );
+    model.selectedVariableProperty.link( updateParticleVisibility );
     updateParticleVisibility();
-    cellRoot.scale = Math.min( 1.12, ( panelHeight - 36 ) / 388 );
+    const baseCellScale = Math.min( 1.02, ( panelHeight - 90 ) / 388 );
+    cellRoot.scale = baseCellScale;
     cellRoot.centerX = this.layoutBounds.centerX;
     cellRoot.centerY = panelTop + panelHeight * 0.47;
 
@@ -422,6 +473,18 @@ class AnimalCellScreenView extends ScreenView {
     const rightContent = new Node();
     this.addChild( leftContent );
     this.addChild( rightContent );
+    const cellStateText = new Text( '', {
+      font: new PhetFont( { size: 22, weight: 'bold' } ), fill: '#2C7552',
+      centerX: this.layoutBounds.centerX, top: panelTop + panelHeight - 80,
+      maxWidth: viewWidth - sideWidth * 2 - 50
+    } );
+    const causeEffectText = new Text( '', {
+      font: readableFont( 14 ), fill: '#294957', centerX: this.layoutBounds.centerX,
+      top: panelTop + panelHeight - 48, maxWidth: viewWidth - sideWidth * 2 - 46,
+      align: 'center'
+    } );
+    this.addChild( cellStateText );
+    this.addChild( causeEffectText );
     let activeExploreQuestion = null;
     let trialPanelPage = 'design';
     let variableMenuOpen = false;
@@ -471,9 +534,69 @@ class AnimalCellScreenView extends ScreenView {
       baseColor: color, listener: listener
     } );
     const addPanelTitle = ( root, text, x, y ) => root.addChild( new Text( text, {
-      font: readableBoldFont( 22 ), fill: '#125F7B',
+      font: new PhetFont( { size: 24, weight: 'bold' } ), fill: '#125F7B',
       left: x + 14, top: y + 12, maxWidth: sideWidth - 28
     } ) );
+    const updateCellStateLabels = () => {
+      const phenotype = model.phenotypeProperty.value;
+      const highOsmoticLoad = model.volumeProperty.value >= 160;
+      cellStateText.string = phenotype === 'CRITICAL' && highOsmoticLoad ? 'CELL STATE  ·  CRITICAL — LYSIS RISK' : 'CELL STATE  ·  ' + phenotype;
+      cellStateText.fill = phenotype === 'CRITICAL' ? '#AE3038' :
+                           phenotype === 'STRESSED' ? '#A35B1C' :
+                           phenotype === 'SWOLLEN' ? '#197694' :
+                           phenotype === 'SHRUNKEN' ? '#674C97' : '#2C7552';
+      const inputs = model.appliedInputsProperty.value;
+      const variableKey = model.selectedVariableProperty.value;
+      const inputValue = model.variables[ variableKey ].value;
+      let chain = 'Choose a variable, predict an outcome, change its value, then run the experiment.';
+      if ( model.trialLockedProperty.value ) {
+        if ( variableKey === 'ph' ) {
+          chain = 'pH ' + formattedNumber( inputs.ph, 1 ) + '  →  enzyme activity shifts  →  ATP and protein processing slow  →  cell stress rises';
+        }
+        else if ( variableKey === 'water' ) {
+          chain = inputValue < 300 ? 'Outside ' + roundSymmetric( inputs.water ) + ' mOsm/L  →  water enters  →  cell volume rises  →  membrane stretches' :
+                  inputValue > 300 ? 'Outside ' + roundSymmetric( inputs.water ) + ' mOsm/L  →  water leaves  →  cell volume falls  →  contents crowd' :
+                  'Outside 300 mOsm/L  →  balanced water movement  →  cell volume stays near baseline';
+        }
+        else if ( variableKey === 'permeability' ) {
+          chain = inputs.permeability < 70 ? 'Low permeability  →  selective transport slows  →  nutrient entry and waste removal fall' :
+                  inputs.permeability > 130 ? 'High permeability  →  selectivity weakens  →  internal balance falls  →  swelling risk rises' :
+                  'Normal permeability  →  selective transport  →  internal balance is maintained';
+        }
+        else if ( variableKey === 'mitochondria' || variableKey === 'oxygen' || variableKey === 'glucose' ) {
+          chain = 'Energy supply changes  →  ATP ' + roundSymmetric( model.atpProperty.value ) + '%  →  transport and protein traffic ' + ( model.atpProperty.value < 55 ? 'slow' : 'continue' ) + '  →  cell vitality responds';
+        }
+        else if ( variableKey === 'ribosomes' ) {
+          chain = 'Ribosome function ' + roundSymmetric( inputs.ribosomes ) + '%  →  fewer proteins are built  →  less cargo enters the pathway';
+        }
+        else if ( variableKey === 'golgi' ) {
+          chain = 'Golgi function ' + roundSymmetric( inputs.golgi ) + '%  →  packaging slows  →  protein cargo accumulates before export';
+        }
+        else if ( variableKey === 'lysosomes' ) {
+          chain = 'Lysosome function ' + roundSymmetric( inputs.lysosomes ) + '%  →  recycling slows  →  waste builds up  →  cell stress rises';
+        }
+        else {
+          chain = 'Condition changes  →  cell processes respond over time  →  compare the readings with the starting state';
+        }
+      }
+      causeEffectText.string = chain;
+    };
+    model.phenotypeProperty.link( updateCellStateLabels );
+    model.trialLockedProperty.link( updateCellStateLabels );
+    model.selectedVariableProperty.link( updateCellStateLabels );
+    model.appliedInputsProperty.link( updateCellStateLabels );
+    model.atpProperty.link( () => updateCellStateLabels() );
+    model.volumeProperty.link( () => updateCellStateLabels() );
+    const selectVariable = key => {
+      model.restoreHealthyCellGradually();
+      model.selectedVariableProperty.value = key;
+      model.selectedOrganelleProperty.value = VARIABLE_ORGANELLES[ key ];
+      model.pathwayHighlightProperty.value = VARIABLE_PATHWAYS[ key ];
+      model.predictionProperty.value = null;
+      model.startTrial();
+      variableMenuOpen = false;
+      renderRight();
+    };
 
     const renderLeft = () => {
       leftContent.removeAllChildren();
@@ -481,6 +604,34 @@ class AnimalCellScreenView extends ScreenView {
       if ( mode === 'explore' ) {
         const data = INFO[ model.selectedOrganelleProperty.value ] || INFO.nucleus;
         addPanelTitle( leftContent, 'CELL PARTS', leftX, panelTop );
+        if ( model.selectedOrganelleProperty.value === 'cytoplasm' ) {
+          let y = panelTop + 62;
+          [
+            [ 'CYTOPLASM', 'WHAT IT IS', 'The fluid interior of the cell where organelles are suspended.' ],
+            [ '', 'WHAT HAPPENS HERE', 'Many chemical reactions occur here and materials move between organelles.' ],
+            [ '', 'WHY IT MATTERS', 'It provides the environment that allows cell processes to continue.' ]
+          ].forEach( item => {
+            if ( item[ 0 ] ) {
+              leftContent.addChild( new Text( item[ 0 ], {
+                font: readableBoldFont( 20 ), fill: '#163D50', left: leftX + 14, top: y,
+                maxWidth: sideWidth - 28
+              } ) );
+              y += 38;
+            }
+            leftContent.addChild( new Text( item[ 1 ], {
+              font: readableBoldFont( 15 ), fill: '#125F7B', left: leftX + 14, top: y,
+              maxWidth: sideWidth - 28
+            } ) );
+            y += 26;
+            const body = new Text( item[ 2 ], {
+              font: readableFont( 15 ), fill: '#294957', left: leftX + 14, top: y,
+              maxWidth: sideWidth - 28
+            } );
+            leftContent.addChild( body );
+            y = body.bottom + 20;
+          } );
+          return;
+        }
         let y = panelTop + 55;
         const addSection = ( label, body, color = '#294957' ) => {
           leftContent.addChild( new Text( label, {
@@ -505,7 +656,8 @@ class AnimalCellScreenView extends ScreenView {
           maxWidth: sideWidth - 28
         } ) );
         y += 32;
-        addSection( 'HOW IT WORKS', data.job );
+        addSection( 'WHAT IT DOES', data.job );
+        addSection( 'HOW IT WORKS', data.mechanism || 'It supports its connected cell processes.' );
         addSection( 'WORKS WITH', data.connects );
         addSection( 'WHY IT MATTERS', data.importance || 'Supports the connected cell pathway shown here.' );
         addSection( 'IF FUNCTION WEAKENS', data.failure, '#8B4338' );
@@ -1690,11 +1842,207 @@ class AnimalCellScreenView extends ScreenView {
         } );
       }
     };
+    const renderExplorePanel = () => {
+      const x = rightX + 14;
+      const width = sideWidth - 28;
+      let y = panelTop + 14;
+      const heading = new Text( 'TEST A CONDITION', {
+        font: new PhetFont( { size: 24, weight: 'bold' } ), fill: '#125F7B', left: x, top: y,
+        maxWidth: width
+      } );
+      rightContent.addChild( heading );
+      y = heading.bottom + 8;
+
+      if ( variableMenuOpen ) {
+        const groupHeader = ( text, top ) => {
+          const node = new Text( text, {
+            font: readableBoldFont( 14 ), fill: '#125F7B', left: x, top: top,
+            maxWidth: width
+          } );
+          rightContent.addChild( node );
+          return node.bottom + 4;
+        };
+        const optionButton = ( key, top ) => {
+          const definition = definitionForKey( key );
+          const button = makeButton( definition.label, () => selectVariable( key ),
+            model.selectedVariableProperty.value === key ? '#9EDFEB' : '#EEF7F9', 14, width );
+          button.left = x;
+          button.top = top;
+          rightContent.addChild( button );
+          return button.bottom + 3;
+        };
+        y = groupHeader( 'ENVIRONMENT', y );
+        EXPLORE_VARIABLE_KEYS.slice( 0, 6 ).forEach( key => { y = optionButton( key, y ); } );
+        y = groupHeader( 'CELL FUNCTION', y + 3 );
+        EXPLORE_VARIABLE_KEYS.slice( 6 ).forEach( key => { y = optionButton( key, y ); } );
+        return;
+      }
+
+      const variableKey = model.selectedVariableProperty.value;
+      const definition = definitionForKey( variableKey );
+      const selectorLabel = new Text( '1 · SELECT VARIABLE', {
+        font: readableBoldFont( 14 ), fill: '#294957', left: x, top: y
+      } );
+      rightContent.addChild( selectorLabel );
+      y = selectorLabel.bottom + 4;
+      const selector = makeButton( definition.label + '  ▼', () => {
+        variableMenuOpen = true;
+        renderRight();
+      }, '#E5F3F7', 15, width );
+      selector.left = x;
+      selector.top = y;
+      rightContent.addChild( selector );
+      y = selector.bottom + 6;
+
+      const controlLabel = new Text( '3 · CHANGE VALUE', {
+        font: readableBoldFont( 14 ), fill: '#294957', left: x, top: y
+      } );
+      rightContent.addChild( controlLabel );
+      y = controlLabel.bottom + 3;
+      const currentValue = new Text( inputDisplayValue( variableKey, model.variables[ variableKey ].value ), {
+        font: new PhetFont( { size: 22, weight: 'bold' } ), fill: '#125F7B', left: x, top: y
+      } );
+      rightContent.addChild( currentValue );
+      const updateCurrentValue = value => { currentValue.string = inputDisplayValue( variableKey, value ); };
+      model.variables[ variableKey ].lazyLink( updateCurrentValue );
+      rightPanelUnlinks.push( () => model.variables[ variableKey ].unlink( updateCurrentValue ) );
+      y = currentValue.bottom + 3;
+
+      if ( variableKey === 'ph' || variableKey === 'water' || variableKey === 'permeability' ) {
+        const scaleLabels = variableKey === 'ph' ? [ '6.4 · Acidic', '7.4 · Optimal', '8.4 · Alkaline' ] :
+                            variableKey === 'water' ? [ '200 · Hypotonic', '300 · Isotonic', '400 · Hypertonic' ] : [ 'LOW', 'NORMAL', 'HIGH' ];
+        const scaleRow = new Node();
+        scaleLabels.forEach( ( label, index ) => {
+          scaleRow.addChild( new Text( label, {
+            font: readableBoldFont( 10 ), fill: index === 1 ? '#315C48' : '#526A73',
+            left: x + index * width / 3, top: y, maxWidth: width / 3 - 2,
+            align: index === 0 ? 'left' : index === 1 ? 'center' : 'right'
+          } ) );
+        } );
+        rightContent.addChild( scaleRow );
+        y = scaleRow.bottom + 2;
+      }
+      const slider = new HSlider( model.variables[ variableKey ], new Range( definition.min, definition.max ), {
+        trackSize: new Dimension2( width - 8, 7 ), thumbSize: new Dimension2( 22, 30 ),
+        majorTickLength: 0, minorTickLength: 0
+      } );
+      slider.left = x + 4;
+      slider.top = y;
+      slider.enabled = !model.trialLockedProperty.value;
+      rightContent.addChild( slider );
+      y = slider.bottom + 4;
+
+      const predictionTitle = new Text( '2 · PREDICT THE RESULT', {
+        font: readableBoldFont( 14 ), fill: '#294957', left: x, top: y
+      } );
+      rightContent.addChild( predictionTitle );
+      y = predictionTitle.bottom + 3;
+      const predictionButtons = [
+        [ '↑ INCREASE', 'increase' ], [ '↓ DECREASE', 'decrease' ], [ '≈ SAME', 'stay the same' ]
+      ].map( item => makeButton( item[ 0 ], () => {
+        model.predictionProperty.value = item[ 1 ];
+        renderRight();
+      }, model.predictionProperty.value === item[ 1 ] ? '#9EDFEB' : '#EEF7F9', 11, 80 ) );
+      rightContent.addChild( new HBox( { children: predictionButtons, spacing: 3, left: x, top: y } ) );
+      y = Math.max( ...predictionButtons.map( button => button.bottom ) ) + 6;
+
+      const runButton = makeButton( model.trialLockedProperty.value ?
+                                    model.responseReadyProperty.value ? 'EXPERIMENT COMPLETE' : '4 · RUNNING — WATCH THE CELL' : '4 · RUN EXPERIMENT', () => {
+        model.trialStartProperty.value = model.getOutputSnapshot();
+        model.trialStartSettingsProperty.value = model.getInputSnapshot();
+        model.applyCurrentInputs();
+        model.triggerFocusEffect( VARIABLE_ORGANELLES[ variableKey ] || variableKey );
+        model.pathwayHighlightProperty.value = VARIABLE_PATHWAYS[ variableKey ];
+        model.trialLockedProperty.value = true;
+        updateCellStateLabels();
+        renderRight();
+      }, '#BCEACB', 15, width );
+      runButton.left = x;
+      runButton.top = y;
+      runButton.enabled = !model.trialLockedProperty.value && !!model.predictionProperty.value;
+      rightContent.addChild( runButton );
+      y = runButton.bottom + 7;
+
+      const outputSpec = key => {
+        const common = {
+          ph: [ [ 'ATP level', 'atp' ], [ 'Transport', 'transport' ], [ 'Cell stress', 'stress' ], [ 'Cell state', 'phenotype' ] ],
+          water: [ [ 'Cell volume', 'volume' ], [ 'Water flow', 'waterMovement' ], [ 'Membrane stretch', 'membraneTension' ], [ 'Cell state', 'phenotype' ] ],
+          permeability: [ [ 'Transport', 'transport' ], [ 'Cell balance', 'balance' ], [ 'Cell volume', 'volume' ], [ 'Cell state', 'phenotype' ] ],
+          mitochondria: [ [ 'ATP level', 'atp' ], [ 'Transport', 'transport' ], [ 'Cell health', 'health' ], [ 'Cell state', 'phenotype' ] ],
+          ribosomes: [ [ 'Protein made', 'protein' ], [ 'Protein export', 'export' ], [ 'Cell health', 'health' ], [ 'Cell state', 'phenotype' ] ],
+          golgi: [ [ 'Protein export', 'export' ], [ 'Cargo backlog', 'golgiBacklog' ], [ 'Cell stress', 'stress' ], [ 'Cell state', 'phenotype' ] ],
+          lysosomes: [ [ 'Waste load', 'waste' ], [ 'Cell stress', 'stress' ], [ 'Cell health', 'health' ], [ 'Cell state', 'phenotype' ] ],
+          oxygen: [ [ 'ATP level', 'atp' ], [ 'Transport', 'transport' ], [ 'Cell stress', 'stress' ], [ 'Cell state', 'phenotype' ] ],
+          glucose: [ [ 'ATP level', 'atp' ], [ 'Protein made', 'protein' ], [ 'Cell health', 'health' ], [ 'Cell state', 'phenotype' ] ],
+          temperature: [ [ 'ATP level', 'atp' ], [ 'Protein made', 'protein' ], [ 'Cell stress', 'stress' ], [ 'Cell state', 'phenotype' ] ]
+        };
+        return common[ key ].map( item => ( {
+          label: item[ 0 ], key: item[ 1 ], property: item[ 1 ] === 'phenotype' ? model.phenotypeProperty :
+            item[ 1 ] === 'waterMovement' ? model.waterMovementProperty :
+            item[ 1 ] === 'membraneTension' ? model.membraneTensionProperty : model[ item[ 1 ] + 'Property' ]
+        } ) );
+      };
+      const readingTitle = new Text( model.trialLockedProperty.value ? '6 · LIVE MEASUREMENTS' : 'LIVE MEASUREMENTS', {
+        font: readableBoldFont( 14 ), fill: '#125F7B', left: x, top: y
+      } );
+      rightContent.addChild( readingTitle );
+      y = readingTitle.bottom + 3;
+      const before = model.trialStartProperty.value || model.getOutputSnapshot();
+      outputSpec( variableKey ).forEach( ( spec, index ) => {
+        const row = new Rectangle( 0, 0, width, 32, 5, 5, {
+          fill: index % 2 === 0 ? '#F0F7F9' : '#FFFFFF', stroke: '#D8E8EC', lineWidth: 1,
+          left: x, top: y
+        } );
+        const label = new Text( spec.label, {
+          font: readableFont( 13 ), fill: '#294957', left: x + 6, centerY: row.centerY,
+          maxWidth: 118
+        } );
+        const formatValue = value => typeof value === 'number' ?
+                                   roundSymmetric( value ) + ( spec.key === 'waste' ? ' index' : '%' ) : value;
+        const previous = before[ spec.key ];
+        const current = spec.property.value;
+        const valueText = new Text( model.trialLockedProperty.value && previous !== undefined ?
+                                    formatValue( previous ) + ' → ' + formatValue( current ) : formatValue( current ), {
+          font: readableBoldFont( 13 ), fill: '#163D50', right: x + width - 6, centerY: row.centerY,
+          maxWidth: width - 130, align: 'right'
+        } );
+        const updateValue = value => {
+          valueText.string = model.trialLockedProperty.value && previous !== undefined ?
+                             formatValue( previous ) + ' → ' + formatValue( value ) : formatValue( value );
+        };
+        spec.property.lazyLink( updateValue );
+        rightPanelUnlinks.push( () => spec.property.unlink( updateValue ) );
+        rightContent.addChild( row );
+        rightContent.addChild( label );
+        rightContent.addChild( valueText );
+        y = row.bottom + 3;
+      } );
+      const explanation = new Text( 'EVIDENCE PROMPT\nWhich result changed? What does it show?', {
+        font: readableBoldFont( 12 ), fill: '#526A73', left: x, top: y + 2,
+        maxWidth: width
+      } );
+      rightContent.addChild( explanation );
+      const resetButton = makeButton( 'RESET TO HEALTHY CELL', () => {
+        model.restoreHealthyCellGradually();
+        model.pathwayHighlightProperty.value = VARIABLE_PATHWAYS[ variableKey ];
+        model.startTrial();
+        updateCellStateLabels();
+        renderRight();
+      }, '#DDF3FA', 13, width );
+      resetButton.left = x;
+      resetButton.bottom = panelTop + panelHeight - 9;
+      rightContent.addChild( resetButton );
+    };
+
     const renderRight = () => {
       rightPanelUnlinks.forEach( unlink => unlink() );
       rightPanelUnlinks = [];
       rightContent.removeAllChildren();
       if ( model.modeProperty.value === 'explore' ) {
+        renderExplorePanel();
+        return;
+      }
+      if ( model.modeProperty.value === 'learn' ) {
         const data = INFO[ model.selectedOrganelleProperty.value ] || INFO.nucleus;
         const variableKey = data.testVariable;
         const definition = variableKey ? definitionForKey( variableKey ) : null;
@@ -2158,20 +2506,30 @@ class AnimalCellScreenView extends ScreenView {
     };
 
     const updateOrganelleOutlines = () => {
+      const energySupport = 0.34 + 0.0066 * model.atpProperty.value;
       Object.keys( organelleShapes ).forEach( orgKey => {
         const focused = model.focusEffectKeyProperty.value === orgKey;
         const selected = model.selectedOrganelleProperty.value === orgKey;
-        organelleNodes[ orgKey ].opacity = ( organelleActivity[ orgKey ] === undefined ? 1 : organelleActivity[ orgKey ] ) * ( selected ? 1 : 0.26 );
+        organelleNodes[ orgKey ].opacity = ( organelleActivity[ orgKey ] === undefined ? 1 : organelleActivity[ orgKey ] ) * energySupport * ( selected ? 1 : 0.72 );
         organelleShapes[ orgKey ].forEach( shape => {
           shape.lineWidth = focused ? 4 : selected ? 3 : 1.5;
           shape.stroke = focused ? '#E28C00' : selected ? '#102D3A' : '#34505C';
         } );
       } );
       const membraneFocused = model.focusEffectKeyProperty.value === 'membrane';
+      const phenotype = model.phenotypeProperty.value;
+      const tense = model.membraneTensionProperty.value;
       membrane.opacity = model.selectedOrganelleProperty.value === 'membrane' ? 1 : 0.62;
-      cytoplasm.opacity = model.selectedOrganelleProperty.value === 'cytoplasm' ? 0.92 : 0.56;
-      membrane.lineWidth = membraneFocused ? 15 : 8 + model.stressProperty.value * 0.055;
-      membrane.stroke = membraneFocused ? '#E28C00' : mixColor( '#54BFD7', '#CF5C4C', model.stressProperty.value / 100 );
+      cytoplasm.opacity = model.selectedOrganelleProperty.value === 'cytoplasm' ? 0.92 : 0.64;
+      cytoplasmGlow.opacity = model.selectedOrganelleProperty.value === 'cytoplasm' ? 0.28 : 0.04;
+      membrane.lineWidth = membraneFocused ? 15 : 7 + tense * 0.045;
+      membrane.stroke = membraneFocused ? '#E28C00' : phenotype === 'CRITICAL' ? '#C63B46' :
+                        phenotype === 'SWOLLEN' ? '#E48730' : phenotype === 'SHRUNKEN' ? '#8065A7' :
+                        mixColor( '#54BFD7', '#CF5C4C', Math.max( model.stressProperty.value, tense * 0.55 ) / 100 );
+      membraneWrinkles.forEach( wrinkle => {
+        wrinkle.opacity = model.phenotypeProperty.value === 'SHRUNKEN' ? 0.85 :
+                          tense > 42 || model.appliedInputsProperty.value.permeability > 160 ? 0.55 : 0;
+      } );
     };
     const updatePathwayHighlight = selectedPathway => {
       Object.keys( pathwayOverlays ).forEach( pathway => {
@@ -2244,13 +2602,21 @@ class AnimalCellScreenView extends ScreenView {
       }
     } );
 
-    // Visual properties respond to model outputs; the circles are schematic, not to scale.
+    // Visual properties respond to model outputs; size is illustrative, not to scale.
     model.volumeProperty.link( volume => {
-      const scaleFactor = 0.70 + volume * 0.003;
+      const scaleFactor = 0.76 + volume * 0.0024;
       membrane.scaleX = scaleFactor;
       membrane.scaleY = scaleFactor * 0.82;
       cytoplasm.scaleX = scaleFactor * 0.9;
       cytoplasm.scaleY = scaleFactor * 0.74;
+      cytoplasmGlow.scaleX = scaleFactor * 0.88;
+      cytoplasmGlow.scaleY = scaleFactor * 0.72;
+      const organelleSpread = 0.78 + volume * 0.0022;
+      Object.keys( organelleNodes ).forEach( key => {
+        const position = INFO[ key ].position;
+        organelleNodes[ key ].x = position[ 0 ] * organelleSpread;
+        organelleNodes[ key ].y = position[ 1 ] * organelleSpread;
+      } );
     } );
     model.healthProperty.link( health => {
       cytoplasm.fill = mixColor( '#E9FBFF', '#A8BAC8', ( 100 - health ) / 95 );
@@ -2258,6 +2624,8 @@ class AnimalCellScreenView extends ScreenView {
       updateOrganelleOutlines();
     } );
     model.stressProperty.link( () => updateOrganelleOutlines() );
+    model.membraneTensionProperty.link( () => updateOrganelleOutlines() );
+    model.phenotypeProperty.link( () => updateOrganelleOutlines() );
     const organelleFunctions = {
       mitochondria: 'mitochondria', ribosomes: 'ribosomes', roughER: 'roughER',
       golgi: 'golgi', lysosome: 'lysosomes', nucleolus: 'nucleusSignal', nucleus: 'nucleusSignal',
@@ -2265,7 +2633,7 @@ class AnimalCellScreenView extends ScreenView {
     };
     const updateOrganelleActivity = inputs => {
       Object.entries( organelleFunctions ).forEach( entry => {
-        const current = entry[ 1 ] === 'ph' ? Math.max( 0, 100 - Math.abs( inputs.ph - 7.4 ) * 40 ) : inputs[ entry[ 1 ] ];
+        const current = entry[ 1 ] === 'ph' ? Math.max( 0, 100 - Math.max( 0, Math.abs( inputs.ph - 7.4 ) - 0.2 ) * 80 ) : inputs[ entry[ 1 ] ];
         organelleActivity[ entry[ 0 ] ] = 0.28 + 0.72 * current / 100;
       } );
       updateOrganelleOutlines();
@@ -2273,6 +2641,7 @@ class AnimalCellScreenView extends ScreenView {
     updateOrganelleActivity( model.appliedInputsProperty.value );
     model.appliedInputsProperty.link( updateOrganelleActivity );
     model.atpProperty.link( atp => {
+      updateOrganelleOutlines();
       organelleNodes.mitochondria.scale = 0.88 + atp / 400;
       mitochondriaGlowNode.opacity = Math.min( 0.95, 0.12 + atp * 0.008 + model.appliedInputsProperty.value.mitochondria * 0.002 );
       energyParticles.forEach( ( particle, index ) => {
@@ -2337,17 +2706,24 @@ class AnimalCellScreenView extends ScreenView {
       } );
     } );
     model.transportFlowPhaseProperty.link( phase => {
+      const inputs = model.appliedInputsProperty.value;
+      const waterIsSelected = model.selectedVariableProperty.value === 'water';
       membraneParticles.forEach( ( particle, index ) => {
         const t = ( phase + index / membraneParticles.length ) % 1;
-        if ( model.selectedVariableProperty.value === 'water' ) {
-          const hypotonic = model.appliedInputsProperty.value.water < 300;
-          particle.centerX = hypotonic ? -211 + t * 47 : -164 - t * 47;
-          particle.centerY = -48 + index * 18;
-        }
-        else {
-          particle.centerX = -174 + t * 348;
-          particle.centerY = 4 + Math.sin( t * Math.PI * 2 ) * 72;
-        }
+        particle.centerX = -174 + t * 348;
+        particle.centerY = 4 + Math.sin( t * Math.PI * 2 ) * 72;
+        particle.opacity = Math.max( 0.08, Math.min( 1, model.transportProperty.value / 100 - index * 0.09 ) );
+        particle.visible = model.pathwayHighlightProperty.value === 'transport' && !waterIsSelected && model.transportProperty.value > 0.5;
+      } );
+      const osmoticDifference = inputs.water - 300;
+      waterParticles.forEach( ( particle, index ) => {
+        const t = ( phase + index / waterParticles.length ) % 1;
+        const inside = osmoticDifference < -8 ? index < 6 : osmoticDifference > 8 ? index >= 6 : index % 2 === 0;
+        const entering = osmoticDifference < -8 ? inside : osmoticDifference > 8 ? !inside : inside;
+        particle.centerX = entering ? -218 + t * 62 : -156 - t * 62;
+        particle.centerY = -63 + index * 18;
+        particle.opacity = Math.max( 0.18, Math.min( 1, inputs.permeability / 110 ) );
+        particle.visible = model.pathwayHighlightProperty.value === 'transport' && waterIsSelected;
       } );
     } );
 
